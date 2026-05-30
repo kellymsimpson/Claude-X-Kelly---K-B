@@ -1,0 +1,2238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+<title>KÜB</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bloom:#e8d5f5; --nova:#d4a8f0; --orchid:#b97de8; --violet:#9b5dd4;
+    --iris:#7b3db8; --velvet:#5a1f9c; --bg:#121212; --surface:#1e1e1e;
+    --text:#FCFCFB; --muted:#888888;
+    --panel-bg:rgba(255,255,255,.04); --panel-border:rgba(255,255,255,.08);
+    --swatch-bg:rgba(255,255,255,0.06); --backing:#111;
+    --sticker-line:rgba(255,255,255,.12);
+  }
+  :root.day {
+    --bg:#FCFCFB; --surface:#f0f0ef; --text:#121212; --muted:#767676;
+    --panel-bg:rgba(0,0,0,.04); --panel-border:rgba(0,0,0,.1);
+    --swatch-bg:rgba(0,0,0,.06); --backing:#2a2040;
+    --sticker-line:rgba(0,0,0,.10);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;overflow:hidden;-webkit-user-select:none;user-select:none;}
+  body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;
+    display:flex;flex-direction:column;align-items:center;position:fixed;width:100%;height:100%;
+    transition:background .3s,color .3s;}
+  body::before{content:'';position:fixed;width:600px;height:600px;
+    background:radial-gradient(ellipse,rgba(255,255,255,.03) 0%,transparent 70%);
+    top:-100px;left:50%;transform:translateX(-50%);pointer-events:none;z-index:0;}
+
+  header{position:relative;z-index:10;padding:20px 24px 0;width:100%;
+    display:flex;justify-content:space-between;align-items:flex-start;
+    transition:opacity .2s;}
+  header.hidden{display:none;}
+  .play-header{display:none;flex-direction:column;align-items:center;gap:6px;
+    width:100%;padding:10px 16px 0;z-index:10;position:relative;
+    background:var(--bg);}
+  .play-header.visible{display:flex;}
+  .play-wordmark{font-family:'Space Mono',monospace;font-size:18px;letter-spacing:.15em;color:var(--text);text-align:center;}
+  .play-controls-row{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;}
+  .wordmark{font-family:'Space Mono',monospace;font-size:20px;letter-spacing:.15em;color:var(--text);}
+  .wordmark span{font-style:italic;color:var(--text);}
+  .tagline{font-size:10px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-top:3px;}
+
+  .theme-bar{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+  .theme-tabs{display:flex;gap:4px;background:var(--panel-bg);
+    border:1px solid var(--panel-border);border-radius:100px;padding:4px;
+    width:100%;box-sizing:border-box;justify-content:space-between;}
+  .theme-tab{font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;letter-spacing:.12em;
+    text-transform:uppercase;padding:5px 13px;border-radius:100px;border:none;
+    background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;flex:1;text-align:center;}
+  .theme-tab.active{background:var(--text);color:var(--bg);}
+  .theme-tab:hover:not(.active){color:var(--text);}
+
+  .face-row{display:flex;align-items:flex-start;gap:0;background:transparent;
+    border:none;padding:6px 0 0;position:relative;width:100%;box-sizing:border-box;
+    justify-content:center;}
+  .face-row::after{content:'';position:absolute;bottom:0;left:16px;right:16px;
+    height:1px;background:var(--panel-border);}
+  .face-label-tag{font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--muted);margin-right:2px;padding-top:8px;}
+  .face-swatch{width:28px;height:28px;border-radius:7px;cursor:pointer;
+    border:2px solid transparent;transition:transform .2s,border-color .2s;
+    display:flex;align-items:center;justify-content:center;font-size:14px;background:#333;}
+  .face-swatch.active{border-color:var(--text);transform:scale(1.15);}
+  .face-swatch:hover{transform:scale(1.12);}
+  .face-swatch-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding-bottom:6px;min-width:36px;min-height:44px;justify-content:flex-end;cursor:pointer;}
+  /* The swatch itself is smaller now — tap area still 44px via wrapper */
+  .face-swatch-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted);font-family:'Plus Jakarta Sans',sans-serif;}
+
+  .picker-popup{background:var(--surface);
+    border:1px solid var(--panel-border);border-radius:16px;padding:16px;display:none;
+    box-shadow:0 20px 60px rgba(0,0,0,.6);min-width:230px;max-width:90vw;
+    max-height:none;overflow-y:visible;
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:500;}
+  .picker-popup.open{display:block;}
+  .picker-backdrop{display:none;position:fixed;inset:0;z-index:499;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);}
+  .picker-backdrop.open{display:block;}
+  .picker-face-label{font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:10px;}
+
+  /* color picker */
+  .color-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;}
+  .color-option{width:44px;height:44px;border-radius:10px;cursor:pointer;
+    border:2px solid transparent;transition:transform .15s,border-color .15s;position:relative;}
+  .color-option:hover:not(.taken){transform:scale(1.1);}
+  .color-option.selected{border-color:var(--text);}
+  .color-option.taken{opacity:.25;cursor:not-allowed;}
+
+  .palette-grid{display:flex;flex-direction:column;gap:6px;}
+  .palette-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;
+    cursor:pointer;border:2px solid transparent;transition:all .15s;}
+  .palette-row:hover{background:var(--panel-bg);}
+  .palette-row.selected{border-color:var(--text);}
+  .palette-swatches{display:flex;gap:3px;flex:1;}
+  .palette-swatch{height:28px;border-radius:6px;flex:1;}
+  .palette-name{font-family:'Space Mono',monospace;font-size:12px;color:var(--text);
+    white-space:nowrap;min-width:52px;text-align:right;letter-spacing:.04em;}
+
+  /* emoji/shape grid */
+  .emoji-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+  .emoji-option{min-width:44px;min-height:52px;border-radius:10px;cursor:pointer;
+    border:2px solid var(--panel-border);background:var(--panel-bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;transition:all .15s;}
+  .emoji-option canvas{display:block;}
+  .emoji-option .elabel{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+  .emoji-option:hover:not(.taken){background:var(--panel-bg);border-color:var(--text);}
+  .emoji-option.selected{border-color:var(--text);background:var(--panel-bg);}
+  .emoji-option.taken{opacity:.25;cursor:not-allowed;}
+
+  .scene-wrapper{position:relative;z-index:5;flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:flex-start;gap:8px;padding:6px 16px 16px;width:100%;
+    background:var(--bg);min-height:0;overflow:hidden;}
+  #cubeCanvas{display:block;border-radius:16px;cursor:grab;outline:none;
+    max-height:calc(100vh - 320px);max-width:100%;touch-action:none;}
+  #cubeCanvas.grabbing{cursor:grabbing;}
+
+  /* Fix 2: Visible focus styles for keyboard navigation */
+  :focus-visible{outline:2px solid var(--text);outline-offset:3px;border-radius:4px;}
+  button:focus-visible{outline:2px solid var(--text);outline-offset:3px;}
+  [role="button"]:focus-visible{outline:2px solid var(--text);outline-offset:3px;border-radius:8px;}
+  /* Skip link for keyboard users */
+  .skip-link{position:fixed;top:-100px;left:16px;z-index:99999;background:var(--text);
+    color:var(--bg);padding:8px 16px;border-radius:8px;font-size:14px;
+    font-family:'Plus Jakarta Sans',sans-serif;text-decoration:none;transition:top .15s;}
+  .skip-link:focus{top:16px;}
+  /* Visually hidden but screen-reader accessible */
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+
+  .btn{font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    padding:8px 16px;border-radius:100px;border:1px solid var(--panel-border);
+    background:var(--panel-bg);color:var(--text);cursor:pointer;transition:all .2s;}
+  .btn:hover{background:var(--panel-border);border-color:var(--text);}
+  .btn.primary{background:var(--text);color:var(--bg);border-color:transparent;}
+  .btn.primary:hover{opacity:.85;}
+  .hint{font-size:11px;color:var(--muted);letter-spacing:.04em;text-align:center;line-height:1.7;}
+  .mode-indicator{font-size:10px;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--text);opacity:0;transition:opacity .3s;height:14px;}
+  .mode-indicator.visible{opacity:1;}
+  .daynight-btn{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;padding:5px 10px;
+    border-radius:100px;border:none;background:transparent;
+    color:var(--text);cursor:pointer;transition:all .25s;line-height:1;
+    margin-left:auto;border-left:1px solid var(--panel-border);padding-left:12px;
+    display:inline-flex;align-items:center;justify-content:center;}
+  .daynight-btn:hover{background:var(--panel-bg);}
+  .game-select-daynight{padding:6px 10px;border-radius:100px;border:1px solid var(--panel-border);
+    background:var(--panel-bg);color:var(--text);cursor:pointer;transition:all .25s;
+    display:inline-flex;align-items:center;justify-content:center;}
+  .game-select-daynight:hover{border-color:var(--text);}
+
+  /* ── Shape mode toggle ── */
+  .shape-toggle-row{display:flex;align-items:center;gap:10px;font-size:11px;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
+  .toggle-switch{position:relative;width:40px;height:22px;cursor:pointer;}
+  .toggle-switch input{opacity:0;width:0;height:0;position:absolute;}
+  .toggle-track{position:absolute;inset:0;background:var(--panel-border);
+    border-radius:100px;transition:background .25s;}
+  .toggle-switch input:checked+.toggle-track{background:var(--text);}
+  .toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;
+    border-radius:50%;background:var(--bg);transition:transform .25s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .toggle-switch input:checked~.toggle-thumb{transform:translateX(18px);}
+
+  /* Shape mode card overrides — night mode */
+  .game-cards.shape-mode .game-card-name{color:#FCFCFB;}
+  .game-cards.shape-mode .game-card-desc{color:rgba(252,252,251,0.5);}
+  .game-cards.shape-mode .game-card-icon{background:#FCFCFB !important;}
+  .game-cards.shape-mode .game-card-icon svg path{fill:#121212 !important;}
+  .game-cards.shape-mode .game-card-badge{background:#1e1e1e;border-color:rgba(255,255,255,.1);color:#888;}
+  /* Shape mode card overrides — day mode */
+  :root.day .game-cards.shape-mode .game-card-name{color:#121212;}
+  :root.day .game-cards.shape-mode .game-card-desc{color:rgba(18,18,18,0.5);}
+  :root.day .game-cards.shape-mode .game-card-icon{background:#121212 !important;}
+  :root.day .game-cards.shape-mode .game-card-icon svg path{fill:#FCFCFB !important;}
+  :root.day .game-cards.shape-mode .game-card-badge{background:#e8e8e8;border-color:rgba(0,0,0,.1);color:#666;}
+
+  /* ── Game select screen ── */
+  .game-select{position:fixed;inset:0;background:var(--bg);z-index:50;
+    display:flex;flex-direction:column;align-items:center;
+    justify-content:flex-start;gap:clamp(8px,2vh,16px);
+    padding:clamp(16px,4vh,32px) 24px env(safe-area-inset-bottom,0px);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;transition:background .3s,color .3s;}
+  .game-select.hidden{opacity:0;pointer-events:none;}
+  .game-select-top{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .game-select-header{display:flex;width:100%;max-width:380px;justify-content:space-between;align-items:center;}
+  .game-select-title{font-family:'Space Mono',monospace;font-size:13px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--text);text-align:center;}
+  #previewCanvas{display:block;border-radius:12px;max-width:100%;}
+  .game-cards{display:grid;grid-template-columns:1fr 1fr;gap:20px 10px;width:100%;max-width:220px;}
+  .game-card{background:transparent;border:none;cursor:pointer;transition:all .2s;
+    text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;
+    font-family:inherit;width:100%;min-height:0;}
+  .game-card:not(.locked):hover .game-card-icon{transform:scale(1.08);}
+  .game-card.locked{cursor:not-allowed;opacity:.45;}
+  .game-card-icon{width:clamp(64px,18vw,88px);height:clamp(64px,18vw,88px);border-radius:18px;display:flex;align-items:center;
+    justify-content:center;transition:transform .2s;position:relative;}
+  .game-card-icon svg{width:clamp(28px,8vw,40px);height:clamp(28px,8vw,40px);fill:white;}
+  .game-card-badge{position:absolute;top:-6px;right:-6px;font-size:10px;letter-spacing:.1em;
+    text-transform:uppercase;background:var(--bg);border:1px solid var(--panel-border);
+    color:var(--text);padding:2px 7px;border-radius:100px;font-weight:600;opacity:0.85;}
+  .game-card-name{font-family:'Space Mono',monospace;font-size:14px;color:var(--text);}
+
+  /* ── Endless HUD ── */
+  .endless-hud{display:none;position:absolute;top:0;left:0;right:0;
+    padding:12px 16px;z-index:20;pointer-events:none;}
+  .endless-hud.visible{display:flex;align-items:center;justify-content:center;}
+  .hud-stat{text-align:center;}
+  .hud-label{font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
+  .hud-value{font-family:'Space Mono',monospace;font-size:18px;color:var(--text);letter-spacing:.05em;}
+
+  /* ── Arrow orbit controls ── */
+  .arrow-controls{display:grid;grid-template-columns:52px 58px 52px;
+    grid-template-rows:44px 44px 44px;column-gap:8px;row-gap:8px;justify-content:center;align-items:center;}
+  .arrow-btn{width:44px;height:44px;border-radius:0;border:none;
+    background:transparent;color:var(--text);cursor:pointer;display:flex;
+    align-items:center;justify-content:center;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+  .arrow-btn-inner{width:36px;height:36px;border-radius:10px;
+    border:1px solid var(--panel-border);background:var(--panel-bg);
+    display:flex;align-items:center;justify-content:center;transition:background .15s,transform .1s;}
+  .arrow-btn:active .arrow-btn-inner{background:var(--text);color:var(--bg);transform:scale(0.92);}
+  .arrow-btn svg{pointer-events:none;}
+  .arrow-home{grid-column:2;display:flex;align-items:center;justify-content:center;}
+  .arrow-home .btn{height:44px;padding:0 12px;font-size:10px;letter-spacing:.1em;width:100%;border-radius:100px;}
+  .game-controls{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;justify-content:center;width:100%;padding:0 16px;box-sizing:border-box;}
+  .game-controls .btn{font-size:10px;padding:8px 10px;white-space:nowrap;flex-shrink:1;}
+
+</style>
+</head>
+<body>
+<!-- Skip navigation for keyboard users -->
+<a href="#gameSelect" class="skip-link">Skip to game</a>
+
+<!-- Screen reader live region for status announcements -->
+<div id="srAnnounce" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
+<header class="hidden">
+  <div>
+    <div class="wordmark">KÜB</div>
+    <div class="tagline">3D Cube Studio</div>
+  </div>
+  <div style="display:flex;align-items:flex-start;gap:10px;">
+  <div class="theme-bar">
+    <div class="theme-tabs">
+      <button class="theme-tab active" onclick="setTheme('color')">Color</button>
+      <button class="theme-tab" onclick="setTheme('shape')">Shape</button>
+      <button class="daynight-btn" id="daynightBtn" onclick="toggleDayNight()" title="Toggle day/night mode">🌙</button>
+    </div>
+    <div class="face-row" id="faceRow">
+      <span class="face-label-tag">Faces</span>
+      <div class="face-swatch" id="sw-0" onclick="openPicker(0)" title="U — Up"></div>
+      <div class="face-swatch" id="sw-1" onclick="openPicker(1)" title="D — Down"></div>
+      <div class="face-swatch" id="sw-2" onclick="openPicker(2)" title="F — Front"></div>
+      <div class="face-swatch" id="sw-3" onclick="openPicker(3)" title="B — Back"></div>
+      <div class="face-swatch" id="sw-4" onclick="openPicker(4)" title="L — Left"></div>
+      <div class="face-swatch" id="sw-5" onclick="openPicker(5)" title="R — Right"></div>
+    </div>
+  </div>
+  </div>
+</header>
+
+<!-- Play screen wrapper - full screen with bg color, hidden until game starts -->
+<div id="playScreen" style="display:none;position:fixed;inset:0;background:var(--bg);
+  flex-direction:column;align-items:center;z-index:40;overflow:hidden;">
+
+  <!-- In-game header: KÜB centered + theme tabs + faces -->
+  <div class="play-header visible" id="playHeader">
+    <div class="play-wordmark">KÜB</div>
+    <div class="play-controls-row">
+      <div class="theme-tabs" style="width:auto;">
+        <button class="theme-tab active" id="playColorTab" onclick="setTheme('color')">Color</button>
+        <button class="theme-tab" id="playShapeTab" onclick="setTheme('shape')">Shape</button>
+        <button class="daynight-btn" onclick="toggleDayNight()" aria-label="Toggle day/night mode" style="border-left:1px solid var(--panel-border);padding-left:10px;">🌙</button>
+      </div>
+    </div>
+    <div class="face-row" id="playFaceRow" style="margin:0 auto;padding-left:16px;padding-right:16px;">
+      <span class="face-label-tag">Faces</span>
+      <div class="face-swatch-wrap" onclick="openPicker(0)" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')openPicker(0)" aria-label="Edit U — Up face"><div class="face-swatch" id="psw-0"></div><div class="face-swatch-label">U</div></div>
+      <div class="face-swatch-wrap" onclick="openPicker(1)" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')openPicker(1)" aria-label="Edit D — Down face"><div class="face-swatch" id="psw-1"></div><div class="face-swatch-label">D</div></div>
+      <div class="face-swatch-wrap" onclick="openPicker(2)" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')openPicker(2)" aria-label="Edit F — Front face"><div class="face-swatch" id="psw-2"></div><div class="face-swatch-label">F</div></div>
+      <div class="face-swatch-wrap" onclick="openPicker(3)" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')openPicker(3)" aria-label="Edit B — Back face"><div class="face-swatch" id="psw-3"></div><div class="face-swatch-label">B</div></div>
+      <div class="face-swatch-wrap" onclick="openPicker(4)" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')openPicker(4)" aria-label="Edit L — Left face"><div class="face-swatch" id="psw-4"></div><div class="face-swatch-label">L</div></div>
+      <div class="face-swatch-wrap" onclick="openPicker(5)" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ')openPicker(5)" aria-label="Edit R — Right face"><div class="face-swatch" id="psw-5"></div><div class="face-swatch-label">R</div></div>
+    </div>
+  </div>
+
+  <div class="scene-wrapper" id="sceneWrapper" style="flex:1;width:100%;">
+    <!-- Endless HUD -->
+    <div class="endless-hud" id="endlessHud">
+      <div style="display:flex;gap:24px;align-items:center;justify-content:center;">
+        <div class="hud-stat">
+          <div class="hud-label">Moves</div>
+          <div class="hud-value" id="moveCounter">0</div>
+        </div>
+        <div style="width:1px;height:32px;background:var(--panel-border);"></div>
+        <div class="hud-stat">
+          <div class="hud-label">Time</div>
+          <div class="hud-value" id="timerDisplay">0:00</div>
+        </div>
+      </div>
+    </div>
+    <div class="mode-indicator" id="modeIndicator"></div>
+
+    <!-- Hint panel -->
+
+    <div style="position:relative;display:inline-block;line-height:0;">
+      <canvas id="cubeCanvas" role="img" aria-label="Interactive 3D Rubik's cube puzzle"></canvas>
+
+      <!-- Start overlay — sits directly over the cube canvas -->
+      <div id="startOverlay" style="display:none;position:absolute;inset:0;
+        align-items:center;justify-content:center;
+        background:rgba(0,0,0,0.0);z-index:30;pointer-events:none;">
+        <button id="startBtn" onclick="beginScramble()" class="btn primary"
+          style="font-size:14px;padding:14px 36px;border-radius:100px;pointer-events:all;
+          letter-spacing:.12em;">Start</button>
+      </div>
+    </div>
+    <!-- Arrow orbit controls: cross layout with HOME pill in center -->
+    <div class="arrow-controls" aria-label="Rotate view">
+      <div></div>
+      <button class="arrow-btn" onclick="snapOrbit('up')" aria-label="Tilt up" style="margin:0 auto;">
+        <div class="arrow-btn-inner"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg></div>
+      </button>
+      <div></div>
+      <button class="arrow-btn" onclick="snapOrbit('left')" aria-label="Rotate left" style="margin:0 auto;">
+        <div class="arrow-btn-inner"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg></div>
+      </button>
+      <div class="arrow-home">
+        <button class="btn" onclick="resetHome()">Home</button>
+      </div>
+      <button class="arrow-btn" onclick="snapOrbit('right')" aria-label="Rotate right" style="margin:0 auto;">
+        <div class="arrow-btn-inner"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg></div>
+      </button>
+      <div></div>
+      <button class="arrow-btn" onclick="snapOrbit('down')" aria-label="Tilt down" style="margin:0 auto;">
+        <div class="arrow-btn-inner"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg></div>
+      </button>
+      <div></div>
+    </div>
+    <div class="game-controls">
+      <button class="btn" onclick="goToMenu()">Main Menu</button>
+      <button class="btn" onclick="undoMove()" id="undoBtn" disabled style="opacity:0.4;">Undo</button>
+      <button class="btn" onclick="showInstructions()" style="padding:8px 12px;" aria-label="How to play">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      </button>
+      <button class="btn primary" onclick="showResetConfirm()">Reset</button>
+    </div>
+
+    <!-- Reset confirmation modal -->
+    <div id="resetOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);
+      z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px);"
+      role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+      <div style="background:var(--surface);border:1px solid var(--panel-border);border-radius:20px;
+        padding:32px;max-width:300px;width:90%;text-align:center;">
+        <div id="resetTitle" style="font-family:'Space Mono',monospace;font-size:18px;color:var(--text);margin-bottom:10px;">
+          Are you sure you want to reset?
+        </div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:24px;">
+          <button class="btn" onclick="hideResetConfirm()" style="flex:1;">Cancel</button>
+          <button class="btn primary" onclick="confirmReset()" style="flex:1;">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="game-select" id="gameSelect">
+  <!-- Day/night toggle fixed top-right -->
+  <button class="game-select-daynight" id="gsDay" onclick="toggleDayNight()" style="position:absolute;top:16px;right:16px;">🌙</button>
+  <div style="text-align:center;">
+    <div style="font-family:'Space Mono',monospace;font-size:clamp(28px,8vw,42px);letter-spacing:.08em;color:var(--text);line-height:1;">KÜB</div>
+    <div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-top:6px;">3D Cube Studio</div>
+  </div>
+  <canvas id="previewCanvas"></canvas>
+  <div class="shape-toggle-row">
+    <span>Color</span>
+    <label class="toggle-switch">
+      <input type="checkbox" id="shapeModeToggle" onchange="setShapeMode(this.checked)">
+      <div class="toggle-track"></div>
+      <div class="toggle-thumb"></div>
+    </label>
+    <span>Shape</span>
+  </div>
+  <div style="width:100%;max-width:300px;text-align:center;">
+    <div class="game-select-title" id="chooseModeTitle">Choose a mode</div>
+  </div>
+  <div class="game-cards" id="gameCards">
+    <!-- Timed: timer/stopwatch icon — FIRST (swapped with Endless) -->
+    <button class="game-card" onclick="showTimedOptions()" aria-label="Play Timed mode">
+      <div class="game-card-icon" style="background:#FF5900;">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M15 1H9v2h6V1zm-4 13h2V8h-2v6zm8.03-6.61l1.42-1.42c-.43-.51-.9-.99-1.41-1.41l-1.42 1.42C16.07 4.74 14.12 4 12 4c-4.97 0-9 4.03-9 9s4.02 9 9 9 9-4.03 9-9c0-2.12-.74-4.07-1.97-5.61zM12 20c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+      </div>
+      <div class="game-card-name">Timed</div>
+    </button>
+    <!-- Endless: all_inclusive icon -->
+    <button class="game-card" onclick="startEndless()" aria-label="Play Endless mode">
+      <div class="game-card-icon" style="background:#013D98;">
+        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M11.0361 35.4445C7.92821 35.4445 5.31187 34.3097 3.18712 32.0401C1.06237 29.7705 0 27.0582 0 23.9033C0 20.7805 1.07042 18.1085 3.21127 15.8872C5.35211 13.6658 7.9604 12.5552 11.0361 12.5552C12.2917 12.5552 13.5084 12.7641 14.6864 13.182C15.8643 13.5998 16.9085 14.244 17.8189 15.1145L21.8753 18.9777L18.5915 22.1165L14.937 18.5475C14.4235 18.0333 13.8258 17.6626 13.144 17.4353C12.4618 17.2081 11.7674 17.0944 11.0608 17.0944C9.20934 17.0944 7.65956 17.7602 6.41143 19.0917C5.1633 20.4235 4.53924 22.0332 4.53924 23.9206C4.53924 25.8406 5.15509 27.4848 6.3868 28.853C7.61819 30.2212 9.17537 30.9053 11.0583 30.9053C11.7666 30.9053 12.4541 30.7921 13.1208 30.5658C13.7878 30.3392 14.3881 29.9855 14.9215 29.5049L30.1811 15.1145C31.0915 14.244 32.1357 13.5998 33.3136 13.182C34.4916 12.7641 35.6922 12.5552 36.9156 12.5552C40.0235 12.5552 42.6479 13.6658 44.7887 15.8872C46.9296 18.1085 48 20.7805 48 23.9033C48 27.0582 46.9296 29.7705 44.7887 32.0401C42.6479 34.3097 40.0235 35.4445 36.9156 35.4445C35.6922 35.4445 34.4835 35.2436 33.2895 34.8419C32.0955 34.4401 31.0593 33.8039 30.1811 32.9334L26.2696 29.0703L29.505 25.9314L33.077 29.5049C33.5609 29.9878 34.1408 30.3419 34.8169 30.5672C35.493 30.7926 36.1851 30.9053 36.8934 30.9053C38.7763 30.9053 40.3416 30.2186 41.5891 28.8452C42.8369 27.4722 43.4608 25.8303 43.4608 23.9197C43.4608 22.0415 42.8288 20.4345 41.5649 19.0984C40.3013 17.7624 38.7441 17.0944 36.8934 17.0944C36.1851 17.0944 35.4976 17.2237 34.8309 17.4822C34.1639 17.741 33.5797 18.1107 33.0785 18.5914L17.8189 32.9817C16.9085 33.82 15.8563 34.4401 14.6622 34.8419C13.4682 35.2436 12.2595 35.4445 11.0361 35.4445Z"/></svg>
+      </div>
+      <div class="game-card-name">Endless</div>
+    </button>
+    <!-- # of Moves -->
+    <button class="game-card locked" disabled aria-label="# of Moves mode — coming soon">
+      <div class="game-card-icon" style="background:#009E60;">
+        <div class="game-card-badge">Soon</div>
+        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#121212" d="M17.6 32.9L15.9 39.55C15.7667 40.05 15.4917 40.4666 15.075 40.8C14.6583 41.1333 14.2 41.3 13.7 41.3C12.9333 41.3 12.3167 41.0083 11.85 40.425C11.3833 39.8416 11.25 39.1666 11.45 38.4L12.85 32.9H7.69999C6.93332 32.9 6.31665 32.6083 5.84999 32.025C5.38332 31.4416 5.24999 30.7666 5.44999 30C5.58332 29.5 5.84999 29.075 6.24999 28.725C6.64999 28.375 7.13332 28.2 7.69999 28.2H14.05L16.15 19.8H11C10.2333 19.8 9.61665 19.5083 9.14999 18.925C8.68332 18.3416 8.54999 17.6666 8.74999 16.9C8.88332 16.4 9.14999 15.975 9.54999 15.625C9.94999 15.275 10.4333 15.1 11 15.1H17.35L18.95 8.44995C19.0833 7.94995 19.3583 7.53328 19.775 7.19995C20.1917 6.86662 20.65 6.69995 21.15 6.69995C21.9167 6.69995 22.525 6.99162 22.975 7.57495C23.425 8.15828 23.5667 8.81662 23.4 9.54995L22.05 15.1H30.45L32.05 8.44995C32.1833 7.94995 32.4583 7.53328 32.875 7.19995C33.2917 6.86662 33.75 6.69995 34.25 6.69995C35.0167 6.69995 35.625 6.99162 36.075 7.57495C36.525 8.15828 36.6667 8.81662 36.5 9.54995L35.15 15.1H40.3C41.0667 15.1 41.6833 15.3916 42.15 15.975C42.6167 16.5583 42.75 17.2333 42.55 18C42.4167 18.5 42.15 18.925 41.75 19.275C41.35 19.625 40.8667 19.8 40.3 19.8H34L31.85 28.2H37C37.7667 28.2 38.3833 28.4916 38.85 29.075C39.3167 29.6583 39.45 30.3333 39.25 31.1C39.1167 31.6 38.85 32.025 38.45 32.375C38.05 32.725 37.5667 32.9 37 32.9H30.7L29 39.55C28.8667 40.05 28.5917 40.4666 28.175 40.8C27.7583 41.1333 27.3 41.3 26.8 41.3C26.0333 41.3 25.4167 41.0083 24.95 40.425C24.4833 39.8416 24.35 39.1666 24.55 38.4L25.95 32.9H17.6ZM18.75 28.2H27.15L29.25 19.8H20.9L18.75 28.2Z"/></svg>
+      </div>
+      <div class="game-card-name"># of Moves</div>
+    </button>
+    <!-- Challenges: rewarded_ads/trophy icon -->
+    <button class="game-card locked" disabled aria-label="Coming soon">
+      <div class="game-card-icon" style="background:#DF0101;">
+        <div class="game-card-badge">Soon</div>
+        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M27.125 20.875C27.975 20.025 28.4 18.9833 28.4 17.75C28.4 16.5167 27.975 15.475 27.125 14.625C26.275 13.775 25.2333 13.35 24 13.35C22.7667 13.35 21.725 13.775 20.875 14.625C20.025 15.475 19.6 16.5167 19.6 17.75C19.6 18.9833 20.025 20.025 20.875 20.875C21.725 21.725 22.7667 22.15 24 22.15C25.2333 22.15 26.275 21.725 27.125 20.875ZM21.65 39V33.15C19.8167 32.7167 18.1917 31.9083 16.775 30.725C15.3583 29.5417 14.3167 28.1 13.65 26.4C10.5833 26.4667 7.96665 25.4532 5.79999 23.3595C3.63332 21.2655 2.54999 18.679 2.54999 15.6V13.4C2.54999 12.0597 3.00649 10.9328 3.91949 10.0195C4.83282 9.1065 5.95965 8.65 7.29999 8.65H12.5V7.25C12.5 6.45833 12.7938 5.76033 13.3815 5.156C13.9688 4.552 14.675 4.25 15.5 4.25H32.55C33.3417 4.25 34.0397 4.552 34.644 5.156C35.248 5.76033 35.55 6.45833 35.55 7.25V8.65H40.75C42.0417 8.65 43.148 9.1065 44.069 10.0195C44.9897 10.9328 45.45 12.0597 45.45 13.4V15.6C45.45 18.679 44.3667 21.2655 42.2 23.3595C40.0333 25.4532 37.4167 26.4667 34.35 26.4C33.6833 28.1 32.6417 29.5417 31.225 30.725C29.8083 31.9083 28.1833 32.7167 26.35 33.15V39H31.05C31.7083 39 32.2647 39.228 32.719 39.684C33.173 40.1397 33.4 40.698 33.4 41.359C33.4 42.0197 33.173 42.575 32.719 43.025C32.2647 43.475 31.7083 43.7 31.05 43.7H16.95C16.2917 43.7 15.7355 43.472 15.2815 43.016C14.8272 42.5603 14.6 42.002 14.6 41.341C14.6 40.6803 14.8272 40.125 15.2815 39.675C15.7355 39.225 16.2917 39 16.95 39H21.65ZM12.5 21.7V13.4H7.29999V15.6C7.29999 17.1 7.79165 18.4083 8.77499 19.525C9.75832 20.6417 11 21.3667 12.5 21.7ZM28.825 26.752C30.1417 25.42 30.8 23.8027 30.8 21.9V9H17.2V21.9C17.2 23.8027 17.8623 25.42 19.187 26.752C20.5113 28.084 22.1197 28.75 24.012 28.75C25.904 28.75 27.5083 28.084 28.825 26.752ZM35.55 21.7C37.0167 21.3667 38.25 20.6417 39.25 19.525C40.25 18.4083 40.75 17.1 40.75 15.6V13.4H35.55V21.7Z"/></svg>
+      </div>
+      <div class="game-card-name">Challenges</div>
+    </button>
+  </div>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════════════
+//  THEME DEFINITIONS
+// ═══════════════════════════════════════════════════
+const FACE_NAMES = ['U — Up','D — Down','F — Front','B — Back','L — Left','R — Right'];
+
+// Custom SVG shape paths (viewBox 0 0 48 48, fill set dynamically)
+const SHAPE_SVGS = {
+  triangle: 'M23.117 10.6134C23.4931 9.90602 24.5069 9.90602 24.883 10.6134L39.2188 37.5782C39.5729 38.2442 39.0902 39.0476 38.3358 39.0476H9.66419C8.90985 39.0476 8.42711 38.2442 8.78122 37.5782L23.117 10.6134Z',
+  circle:   null,
+  plus:     'M28 6C28.5523 5.99999 29 6.44772 29 7V19.0029H41C41.5523 19.0029 42 19.4507 42 20.0029V28.0029C42 28.5552 41.5523 29.0029 41 29.0029H29V41C29 41.5522 28.5522 41.9999 28 42H20C19.4477 42 19 41.5523 19 41V29.0029H7C6.44804 29.0027 6.0002 28.5549 6 28.0029V20.0029C5.99999 19.4507 6.44786 19.0031 7 19.0029H19V7C19 6.44778 19.4478 6.00011 20 6H28Z',
+  mushroom: 'M24 8C16.562 8 10.4787 14.6291 10.0269 22.9996C9.99715 23.5511 10.4477 24 11 24H37C37.5523 24 38.0028 23.5511 37.9731 22.9996C37.5213 14.6291 31.438 8 24 8Z M24 24C16.562 24 10.4787 30.6291 10.0269 38.9996C9.99715 39.5511 10.4477 40 11 40H37C37.5523 40 38.0028 39.5511 37.9731 38.9996C37.5213 30.6291 31.438 24 24 24Z',
+  arch:     'M24 8.00049C32.8365 8.00049 39.9999 15.1633 40 23.9995V39.9995H8V23.9995C8.00011 15.1634 15.1637 8.00075 24 8.00049Z',
+  square:   'M10 10H38V38H10V10Z',
+  diamond:  'M24.7943 43.6067C24.3941 44.1308 23.605 44.1308 23.2048 43.6067L8.69544 24.6068C8.42179 24.2485 8.42179 23.7513 8.69544 23.393L23.2048 4.39315C23.605 3.86906 24.3941 3.86905 24.7943 4.39313L39.3046 23.393C39.5782 23.7513 39.5782 24.2485 39.3046 24.6069L24.7943 43.6067Z',
+  heart:    'M24.6327 37.3737C24.2522 37.7165 23.6742 37.7165 23.2937 37.3737L20.9839 35.292C18.4092 32.987 16.282 30.9885 14.6023 29.2966C12.9226 27.6046 11.5985 26.0843 10.6299 24.7356C9.6613 23.387 8.98084 22.1364 8.58851 20.9839C8.19617 19.8314 8 18.6299 8 17.3793C8 14.7065 8.88889 12.4751 10.6667 10.6851C12.4444 8.89502 14.6697 8 17.3425 8C18.5931 8 20.0111 8.58126 20.9103 9.24936C21.7906 9.90333 22.5704 10.4192 23.2859 10.9945C23.6995 11.3271 24.3011 11.328 24.7115 10.9915C25.4584 10.3791 26.2781 9.81026 27.0161 9.24936C27.9982 8.50296 29.3333 8 30.5839 8C33.2567 8 35.4943 8.89502 37.2966 10.6851C39.0989 12.4751 40 14.7065 40 17.3793C40 18.6054 39.81 19.7946 39.4299 20.9471C39.0498 22.0996 38.3693 23.3441 37.3885 24.6805C36.4077 26.0169 35.0713 27.5372 33.3793 29.2414C31.6874 30.9456 29.5418 32.9625 26.9425 35.292L24.6327 37.3737Z',
+  flower:   'M7.72896 16.9261C7.72915 12.0245 11.7027 8.05081 16.6044 8.05072C19.5597 8.05089 22.1757 9.49738 23.7887 11.7188C25.3835 9.35702 28.0855 7.80363 31.1498 7.80351C36.0515 7.80365 40.0259 11.7779 40.0259 16.6796C40.0258 19.7012 38.5138 22.3688 36.2073 23.9717C38.5835 25.5641 40.1486 28.2727 40.1488 31.348C40.1488 36.2496 36.1757 40.2238 31.2741 40.2241C28.1989 40.2241 25.4891 38.6598 23.8964 36.2839C22.2936 38.5902 19.6257 40.101 16.6044 40.1012C11.7027 40.1011 7.72917 36.1273 7.72896 31.2257C7.72908 28.2926 9.15275 25.6918 11.346 24.0759C9.15275 22.46 7.72904 19.8593 7.72896 16.9261Z',
+  clover:   'M24 6C28.5079 6.00004 32.1621 9.65607 32.1621 14.166C32.1621 15.5908 31.7964 16.9297 31.1553 18.0957C31.9956 17.8032 32.898 17.6426 33.8379 17.6426C38.3457 17.6427 42 21.2987 42 25.8086C41.9998 30.3183 38.3456 33.9745 33.8379 33.9746C31.3229 33.9746 29.0744 32.8353 27.5771 31.0459V41C27.5771 41.5523 27.1294 42 26.5771 42H21.4229C20.8706 42 20.4229 41.5523 20.4229 41V31.0459C18.9256 32.8353 16.6771 33.9746 14.1621 33.9746C9.65448 33.9744 6.00019 30.3183 6 25.8086C6 21.2987 9.65437 17.6428 14.1621 17.6426C15.1017 17.6426 16.0037 17.8034 16.8438 18.0957C16.2027 16.9298 15.8379 15.5906 15.8379 14.166C15.8379 9.65605 19.4921 6 24 6Z',
+  spade:    'M21.7998 44C21.2475 44 20.7998 43.5523 20.7998 43V33.9912H18.2178C15.8705 33.9912 13.9051 33.0829 12.3223 31.2656C10.7394 29.4482 9.94827 27.1824 9.94824 24.4688C9.94824 23.2239 10.1144 22.0158 10.4482 20.8457C10.7821 19.6757 11.3799 18.4124 12.2412 17.0557C13.1026 15.6988 14.2767 14.1551 15.7627 12.4248C17.2486 10.6946 19.1333 8.64731 21.416 6.28223L23.3105 4.30762C23.7041 3.89758 24.3603 3.89758 24.7539 4.30762L26.6484 6.28223C28.9097 8.62254 30.7787 10.6513 32.2539 12.3691C33.729 14.0869 34.8916 15.6308 35.7422 17C36.5927 18.3692 37.1906 19.6386 37.5352 20.8086C37.8797 21.9787 38.0518 23.199 38.0518 24.4688C38.0517 27.1824 37.2713 29.4482 35.71 31.2656C34.1486 33.0829 32.194 33.9912 29.8467 33.9912H27.1582V43C27.1582 43.5522 26.7103 43.9998 26.1582 44H21.7998Z',
+  star:     'M23.0446 7.09182C23.335 6.15214 24.665 6.15214 24.9554 7.09181L28.5036 18.5739C28.6331 18.9929 29.0204 19.2786 29.459 19.2786H41.0437C42.0002 19.2786 42.4109 20.4926 41.6508 21.0733L32.1936 28.2979C31.8606 28.5523 31.7215 28.9874 31.8453 29.3878L35.437 41.0108C35.7244 41.941 34.6482 42.6918 33.8745 42.1007L24.6071 35.021C24.2487 34.7472 23.7513 34.7472 23.3929 35.021L14.1255 42.1007C13.3518 42.6918 12.2756 41.941 12.563 41.0108L16.1547 29.3878C16.2785 28.9874 16.1394 28.5523 15.8064 28.2979L6.34924 21.0733C5.58912 20.4926 5.99976 19.2786 6.9563 19.2786H18.541C18.9796 19.2786 19.367 18.9929 19.4964 18.5739L23.0446 7.09182Z',
+};
+
+const SHAPE_OPTIONS = [
+  {id:'triangle'},{id:'circle'}, {id:'plus'},    {id:'mushroom'},
+  {id:'arch'},    {id:'square'}, {id:'diamond'}, {id:'heart'},
+  {id:'flower'},  {id:'clover'}, {id:'spade'},   {id:'star'},
+];
+
+const ANIMAL_OPTIONS = [
+  {id:'cat',       label:'Cat',       emoji:'🐱'},
+  {id:'dog',       label:'Dog',       emoji:'🐶'},
+  {id:'mouse',     label:'Mouse',     emoji:'🐭'},
+  {id:'bird',      label:'Bird',      emoji:'🐦'},
+  {id:'horse',     label:'Horse',     emoji:'🐴'},
+  {id:'snake',     label:'Snake',     emoji:'🐍'},
+  {id:'bee',       label:'Bee',       emoji:'🐝'},
+  {id:'bunny',     label:'Bunny',     emoji:'🐰'},
+  {id:'fish',      label:'Fish',      emoji:'🐟'},
+  {id:'whale',     label:'Whale',     emoji:'🐳'},
+  {id:'octopus',   label:'Octopus',   emoji:'🐙'},
+  {id:'jellyfish', label:'Jellyfish', emoji:'🪼'},
+];
+
+const COLOR_PALETTE = [
+  '#b97de8','#f59e0b','#3b82f6','#10b981','#ef4444','#ffffff',
+  '#e8d5f5','#d4a8f0','#9b5dd4','#7b3db8','#5a1f9c',
+  '#fef3c7','#fde68a','#d97706','#92400e',
+  '#dbeafe','#93c5fd','#1d4ed8','#1e3a8a',
+  '#d1fae5','#6ee7b7','#059669','#064e3b',
+  '#fee2e2','#fca5a5','#f87171','#b91c1c',
+  '#f1f5f9','#cbd5e1','#94a3b8','#475569','#1e293b','#111827',
+];
+
+let currentTheme = 'color';
+// faceValues[fi] = color hex | shape id | animal id
+const COLOR_PALETTES = {
+  classic: { name:'Classic', colors:['#FCDA2F','#FFFFFF','#FF5900','#DF0101','#009E60','#013D98'] },
+  fiesta:      { name:'Fiesta',      colors:['#FFBE0B','#FB5607','#8338EC','#3A86FF','#FF006E','#C0ED39'] },
+  forest:      { name:'Forest',      colors:['#C2C5AA','#A4AC86','#656D4A','#414833','#A68A64','#582F0E'] },
+  sunset:      { name:'Sunset',      colors:['#FFE0A7','#F7B801','#F18701','#F35B04','#7678ED','#3D348B'] },
+  spring:      { name:'Spring',      colors:['#F5FFF3','#B2FF9E','#AFFC41','#1DD3B0','#086375','#3C1642'] },
+  blue:        { name:'Blue',        colors:['#8FE1FF','#52BFF1','#3C96F0','#2A70E7','#2A3CB7','#1C1564'] },
+};
+let currentPalette = 'classic';
+let faceValues = [...COLOR_PALETTES.classic.colors];
+
+const THEME_DEFAULTS = {
+  color:  [...COLOR_PALETTES.classic.colors],
+  shape:  ['triangle','circle','flower','mushroom','arch','square'],
+  animal: ['cat','dog','mouse','bird','horse','snake'],
+};
+
+// ═══════════════════════════════════════════════════
+//  CUBE STATE
+// ═══════════════════════════════════════════════════
+function cubieIndex(x,y,z){return (x+1)*9+(y+1)*3+(z+1);}
+let stickers=[]; // stickers[cubieIdx][faceIdx] = value or null
+
+function initStickers(){
+  stickers=[];
+  for(let x=-1;x<=1;x++) for(let y=-1;y<=1;y++) for(let z=-1;z<=1;z++){
+    const s=[null,null,null,null,null,null];
+    if(y===1)  s[0]=faceValues[0];
+    if(y===-1) s[1]=faceValues[1];
+    if(z===1)  s[2]=faceValues[2];
+    if(z===-1) s[3]=faceValues[3];
+    if(x===-1) s[4]=faceValues[4];
+    if(x===1)  s[5]=faceValues[5];
+    stickers.push(s);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  CANVAS & PROJECTION
+// ═══════════════════════════════════════════════════
+const canvas=document.getElementById('cubeCanvas');
+const ctx=canvas.getContext('2d');
+let W=400,H=400;
+
+function resizeCanvas(){
+  // Reserve: play-header ~120px + HUD ~55px + arrows ~90px + controls ~40px + gaps ~30px = ~335px
+  const reservedH = 340;
+  const size=Math.min(400, window.innerWidth-32, window.innerHeight-reservedH);
+  W=Math.max(size,260);H=W;canvas.width=W;canvas.height=H;draw();
+}
+
+let camRotX=-0.58,camRotY=0.52;
+
+function rotX(v,a){const c=Math.cos(a),s=Math.sin(a);return[v[0],v[1]*c-v[2]*s,v[1]*s+v[2]*c];}
+function rotY(v,a){const c=Math.cos(a),s=Math.sin(a);return[v[0]*c+v[2]*s,v[1],-v[0]*s+v[2]*c];}
+function applyCamera(v){return rotY(rotX(v,camRotX),camRotY);}
+
+const FOV=5.0,SCALE=72,GAP=0.06;
+
+function project(v){
+  const sc=W/400*SCALE*FOV/(FOV+v[2]);
+  return[W/2+v[0]*sc,H/2-v[1]*sc];
+}
+
+// ═══════════════════════════════════════════════════
+//  SHAPE RENDERING (canvas 2d path)
+//  When called from the main draw loop, ctx already has a UV→screen transform set.
+//  cx,cy,size are in that local space (size=2 covers the full sticker).
+// ═══════════════════════════════════════════════════
+// Draw a custom SVG shape on canvas, centered at (cx,cy), fitting within `size` units.
+// The SVG paths are designed for a 48x48 viewBox — scale to fit the sticker size.
+function drawShapeOnCanvas(ctx2, shapeId, cx, cy, size, bright, dayMode=false){
+  const col = dayMode ? '#121212' : '#FCFCFB';
+  ctx2.save();
+  ctx2.translate(cx, cy);
+  // Scale from 48x48 viewBox to `size` units (size=2 in main draw loop)
+  const s = size / 48;
+  ctx2.scale(s, s);
+  ctx2.translate(-24, -24); // center the 48x48 viewBox
+  ctx2.fillStyle = col;
+  ctx2.beginPath();
+  if(shapeId === 'circle'){
+    ctx2.arc(24, 24, 16, 0, Math.PI*2);
+  } else if(shapeId === 'mushroom'){
+    // two paths — draw separately
+    ctx2.beginPath();
+    new Path2D('M24 8C16.562 8 10.4787 14.6291 10.0269 22.9996C9.99715 23.5511 10.4477 24 11 24H37C37.5523 24 38.0028 23.5511 37.9731 22.9996C37.5213 14.6291 31.438 8 24 8Z');
+    const p1 = new Path2D('M24 8C16.562 8 10.4787 14.6291 10.0269 22.9996C9.99715 23.5511 10.4477 24 11 24H37C37.5523 24 38.0028 23.5511 37.9731 22.9996C37.5213 14.6291 31.438 8 24 8Z');
+    const p2 = new Path2D('M24 24C16.562 24 10.4787 30.6291 10.0269 38.9996C9.99715 39.5511 10.4477 40 11 40H37C37.5523 40 38.0028 39.5511 37.9731 38.9996C37.5213 30.6291 31.438 24 24 24Z');
+    ctx2.fill(p1);
+    ctx2.fill(p2);
+    ctx2.restore();
+    return;
+  } else {
+    const pathStr = SHAPE_SVGS[shapeId];
+    if(!pathStr){ ctx2.restore(); return; }
+    const p = new Path2D(pathStr);
+    ctx2.fill(p);
+    ctx2.restore();
+    return;
+  }
+  ctx2.fill();
+  ctx2.restore();
+}
+
+// Pixel-space version for picker/swatch previews
+function drawShapePixels(ctx2, shapeId, cx, cy, r, bright, dayShape=false){
+  const col = dayShape ? '#121212' : '#FCFCFB';
+  ctx2.save();
+  ctx2.translate(cx, cy);
+  // r is approx half-size; scale 48x48 viewBox to fit 2r
+  const s = (r * 2) / 48;
+  ctx2.scale(s, s);
+  ctx2.translate(-24, -24);
+  ctx2.fillStyle = col;
+  if(shapeId === 'circle'){
+    ctx2.beginPath();
+    ctx2.arc(24, 24, 16, 0, Math.PI*2);
+    ctx2.fill();
+  } else if(shapeId === 'mushroom'){
+    const p1 = new Path2D('M24 8C16.562 8 10.4787 14.6291 10.0269 22.9996C9.99715 23.5511 10.4477 24 11 24H37C37.5523 24 38.0028 23.5511 37.9731 22.9996C37.5213 14.6291 31.438 8 24 8Z');
+    const p2 = new Path2D('M24 24C16.562 24 10.4787 30.6291 10.0269 38.9996C9.99715 39.5511 10.4477 40 11 40H37C37.5523 40 38.0028 39.5511 37.9731 38.9996C37.5213 30.6291 31.438 24 24 24Z');
+    ctx2.fill(p1);
+    ctx2.fill(p2);
+  } else {
+    const pathStr = SHAPE_SVGS[shapeId];
+    if(pathStr) ctx2.fill(new Path2D(pathStr));
+  }
+  ctx2.restore();
+}
+
+// ── Rounded quad path helper ──────────────────────────────────────────────
+// Draws a quadrilateral with rounded corners (radius in screen pixels).
+// Works by interpolating along each edge to place arc control points.
+function roundedQuadPath(ctx, pts, r) {
+  // pts = [[x0,y0],[x1,y1],[x2,y2],[x3,y3]] in order
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const prev = pts[(i + 3) % 4];
+    const cur  = pts[i];
+    const next = pts[(i + 1) % 4];
+    // edge lengths
+    const d0 = Math.hypot(cur[0]-prev[0], cur[1]-prev[1]);
+    const d1 = Math.hypot(next[0]-cur[0], next[1]-cur[1]);
+    const t0 = Math.min(r, d0 * 0.4) / d0;
+    const t1 = Math.min(r, d1 * 0.4) / d1;
+    // point approaching corner from previous edge
+    const ax = cur[0] + (prev[0]-cur[0]) * t0;
+    const ay = cur[1] + (prev[1]-cur[1]) * t0;
+    // point leaving corner toward next edge
+    const bx = cur[0] + (next[0]-cur[0]) * t1;
+    const by = cur[1] + (next[1]-cur[1]) * t1;
+    if (i === 0) ctx.moveTo(ax, ay);
+    else ctx.lineTo(ax, ay);
+    ctx.quadraticCurveTo(cur[0], cur[1], bx, by);
+  }
+  ctx.closePath();
+}
+// ═══════════════════════════════════════════════════
+const FACE_DEFS=[
+  {norm:[0,1,0],  u:[1,0,0],  v:[0,0,1],  fi:0},
+  {norm:[0,-1,0], u:[1,0,0],  v:[0,0,-1], fi:1},
+  {norm:[0,0,1],  u:[1,0,0],  v:[0,1,0],  fi:2},
+  {norm:[0,0,-1], u:[-1,0,0], v:[0,1,0],  fi:3},
+  {norm:[-1,0,0], u:[0,0,-1], v:[0,1,0],  fi:4},
+  {norm:[1,0,0],  u:[0,0,1],  v:[0,1,0],  fi:5},
+];
+
+function hexToRgb(h){
+  return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+}
+function adjBright(h,f){
+  const[r,g,b]=hexToRgb(h);
+  return`rgb(${Math.min(255,Math.round(r*f))},${Math.min(255,Math.round(g*f))},${Math.min(255,Math.round(b*f))})`;
+}
+
+// Returns true if two hex colors are perceptually close (within threshold)
+function colorsSimilar(hexA, hexB, thresh=40){
+  const[r1,g1,b1]=hexToRgb(hexA);
+  const[r2,g2,b2]=hexToRgb(hexB);
+  return Math.sqrt((r1-r2)**2+(g1-g2)**2+(b1-b2)**2) < thresh;
+}
+
+// Night bg = #0d0a14, Day bg = #f5f0fc
+const BG_DARK  = '#121212';
+const BG_LIGHT = '#FCFCFB';
+function isColor(v){return v&&v.startsWith('#');}
+function isShape(v){return v&&SHAPE_OPTIONS.some(o=>o.id===v);}
+function isAnimal(v){return v&&ANIMAL_OPTIONS.some(o=>o.id===v);}
+
+let faceHitZones=[];
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const allFaces=[];
+
+  for(let x=-1;x<=1;x++) for(let y=-1;y<=1;y++) for(let z=-1;z<=1;z++){
+    const ci=cubieIndex(x,y,z);
+    const pos=getAnimatedPos(x,y,z);
+    const[ax,ay,az]=pos;
+
+    for(const fd of FACE_DEFS){
+      const val=stickers[ci][fd.fi];
+      if(!val) continue;
+
+      const checkX=animating?Math.round(ax):x;
+      const checkY=animating?Math.round(ay):y;
+      const checkZ=animating?Math.round(az):z;
+      const isOuter=Math.abs(checkX+fd.norm[0])>1||Math.abs(checkY+fd.norm[1])>1||Math.abs(checkZ+fd.norm[2])>1;
+      if(!isOuter) continue;
+
+      const fc=[ax+fd.norm[0]*0.5, ay+fd.norm[1]*0.5, az+fd.norm[2]*0.5];
+      const S=0.5-GAP, BS=0.5-GAP*0.25;
+
+      const corners3d=[
+        [fc[0]+(-fd.u[0]-fd.v[0])*S, fc[1]+(-fd.u[1]-fd.v[1])*S, fc[2]+(-fd.u[2]-fd.v[2])*S],
+        [fc[0]+(fd.u[0]-fd.v[0])*S,  fc[1]+(fd.u[1]-fd.v[1])*S,  fc[2]+(fd.u[2]-fd.v[2])*S],
+        [fc[0]+(fd.u[0]+fd.v[0])*S,  fc[1]+(fd.u[1]+fd.v[1])*S,  fc[2]+(fd.u[2]+fd.v[2])*S],
+        [fc[0]+(-fd.u[0]+fd.v[0])*S, fc[1]+(-fd.u[1]+fd.v[1])*S, fc[2]+(-fd.u[2]+fd.v[2])*S],
+      ];
+      const back3d=[
+        [fc[0]+(-fd.u[0]-fd.v[0])*BS, fc[1]+(-fd.u[1]-fd.v[1])*BS, fc[2]+(-fd.u[2]-fd.v[2])*BS],
+        [fc[0]+(fd.u[0]-fd.v[0])*BS,  fc[1]+(fd.u[1]-fd.v[1])*BS,  fc[2]+(fd.u[2]-fd.v[2])*BS],
+        [fc[0]+(fd.u[0]+fd.v[0])*BS,  fc[1]+(fd.u[1]+fd.v[1])*BS,  fc[2]+(fd.u[2]+fd.v[2])*BS],
+        [fc[0]+(-fd.u[0]+fd.v[0])*BS, fc[1]+(-fd.u[1]+fd.v[1])*BS, fc[2]+(-fd.u[2]+fd.v[2])*BS],
+      ];
+
+      const camC=corners3d.map(v=>applyCamera(v));
+      const camB=back3d.map(v=>applyCamera(v));
+      const camN=applyCamera(fd.norm);
+      if(camN[2]>0) continue;
+
+      // Multi-light model: key (top-right-front), fill (left-front), back (top-back)
+      const n=fd.norm;
+      const lights=[
+        {dir:[0.6, 1.0, 2.5], strength:0.55},  // key: front-top-right
+        {dir:[-1.2, 0.4, 1.8], strength:0.40},  // fill: front-left
+        {dir:[0.2, 1.5,-1.0], strength:0.15},   // back: top-back rim
+      ];
+      let diffuse=0;
+      for(const l of lights){
+        const len=Math.sqrt(l.dir[0]**2+l.dir[1]**2+l.dir[2]**2);
+        const ld=l.dir.map(x=>x/len);
+        diffuse+=Math.max(0, n[0]*ld[0]+n[1]*ld[1]+n[2]*ld[2])*l.strength;
+      }
+      const ambient=0.88;
+      const bright=Math.min(1, ambient+diffuse*0.18);
+      const avgZ=camC.reduce((s,v)=>s+v[2],0)/4;
+      const proj=camC.map(v=>project(v));
+      const projB=camB.map(v=>project(v));
+
+      allFaces.push({proj,projB,avgZ,val,bright,x,y,z,norm:fd.norm,fi:fd.fi,fdu:fd.u,fdv:fd.v});
+    }
+  }
+
+  allFaces.sort((a,b)=>b.avgZ-a.avgZ);
+
+  for(const f of allFaces){
+    // Reset stroke state to prevent bleed between shape and color stickers
+    ctx.strokeStyle = 'rgba(0,0,0,0)';
+    ctx.lineWidth = 1;
+
+    // Backing — only draw in night mode; in day mode the light bg provides enough contrast
+    if(!isDayMode){
+      roundedQuadPath(ctx, f.projB, 14);
+      ctx.fillStyle = backingColor;
+      ctx.fill();
+    }
+
+    // sticker face (rounded)
+    roundedQuadPath(ctx, f.proj, 12);
+
+    if(isColor(f.val)){
+      ctx.strokeStyle = 'rgba(0,0,0,0)';
+      ctx.fillStyle=adjBright(f.val,f.bright);
+      ctx.fill();
+    } else {
+      const dayShape = isDayMode && isShape(f.val);
+      const nightShape = !isDayMode && isShape(f.val);
+      // Day shape: white sticker. Night shape: black sticker.
+      if(isShape(f.val)){
+        ctx.fillStyle = isDayMode ? '#FFFFFF' : '#000000';
+      } else {
+        ctx.fillStyle = `rgba(30,22,46,${0.75+f.bright*0.25})`;
+      }
+      ctx.fill();
+
+      // Sticker stroke: day=light gray, night=dark gray (shape only)
+      if(isShape(f.val)){
+        ctx.strokeStyle = isDayMode ? '#F2F2F1' : '#1C1C1C';
+        ctx.lineWidth = 1.5;
+        roundedQuadPath(ctx, f.proj, 12);
+        ctx.stroke();
+      }
+
+      ctx.save();
+      roundedQuadPath(ctx, f.proj, 12);
+      ctx.clip();
+
+      const cx2 = (f.proj[0][0]+f.proj[1][0]+f.proj[2][0]+f.proj[3][0])*0.25;
+      const cy2 = (f.proj[0][1]+f.proj[1][1]+f.proj[2][1]+f.proj[3][1])*0.25;
+      let ux = (f.proj[1][0]+f.proj[2][0])*0.5 - cx2;
+      let uy = (f.proj[1][1]+f.proj[2][1])*0.5 - cy2;
+      let vx = (f.proj[2][0]+f.proj[3][0])*0.5 - cx2;
+      let vy = (f.proj[2][1]+f.proj[3][1])*0.5 - cy2;
+
+      // The shape's "up" is drawn at local (0,-r). This maps to screen-Y = vy*(-r).
+      // For it to point screen-up (Y < 0), we need vy > 0.
+      // If vy < 0, flip both axes 180° to correct orientation.
+      if(vy < 0){ ux=-ux; uy=-uy; vx=-vx; vy=-vy; }
+
+      ctx.setTransform(ux, uy, vx, vy, cx2, cy2);
+
+      if(isShape(f.val)){
+        drawShapeOnCanvas(ctx, f.val, 0, 0, 2, f.bright, isDayMode);
+      } else if(isAnimal(f.val)){
+        const opt=ANIMAL_OPTIONS.find(o=>o.id===f.val);
+        if(opt){
+          ctx.setTransform(1,0,0,1,0,0);
+          const pw=Math.hypot(f.proj[1][0]-f.proj[0][0],f.proj[1][1]-f.proj[0][1]);
+          const ph=Math.hypot(f.proj[3][0]-f.proj[0][0],f.proj[3][1]-f.proj[0][1]);
+          const fontSize=Math.max(8,Math.min(pw,ph)*0.55);
+          ctx.font=`${fontSize}px serif`;
+          ctx.textAlign='center';
+          ctx.textBaseline='middle';
+          ctx.globalAlpha=0.45+f.bright*0.55;
+          ctx.fillText(opt.emoji,cx2,cy2);
+          ctx.globalAlpha=1;
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  faceHitZones=allFaces;
+}
+
+// ═══════════════════════════════════════════════════
+//  ANIMATION
+// ═══════════════════════════════════════════════════
+let animating=false,animAxis=null,animLayer=null,animAngle=0,animTarget=0,animCallback=null;
+let animStartTime=null,animStartAngle=0;
+const SLICE_DURATION=140; // ms — quick, physical feel
+
+// Quint ease-out: rockets off fast, snaps cleanly to rest
+function easeOut5(t){ return 1-Math.pow(1-t,5); }
+
+// Precomputed trig for the current frame — avoids redundant cos/sin calls
+let _animC=1,_animS=0;
+
+function getAnimatedPos(x,y,z){
+  if(!animating||animAxis===null) return[x,y,z];
+  const inLayer=(animAxis==='x'&&x===animLayer)||(animAxis==='y'&&y===animLayer)||(animAxis==='z'&&z===animLayer);
+  if(!inLayer) return[x,y,z];
+  const c=_animC,s=_animS;
+  if(animAxis==='y') return[x*c-z*s,y,x*s+z*c];
+  if(animAxis==='x') return[x,y*c-z*s,y*s+z*c];
+  if(animAxis==='z') return[x*c+y*s,-x*s+y*c,z];
+  return[x,y,z];
+}
+
+function animateSlice(ts){
+  if(!animating) return;
+  if(animStartTime===null) animStartTime=ts;
+  const t=Math.min((ts-animStartTime)/SLICE_DURATION,1);
+  animAngle=animStartAngle+(animTarget-animStartAngle)*easeOut5(t);
+  _animC=Math.cos(animAngle);
+  _animS=Math.sin(animAngle);
+  draw();
+  if(t<1){
+    requestAnimationFrame(animateSlice);
+  } else {
+    animAngle=animTarget;
+    commitSlice(animAxis,animLayer,animTarget>0?1:-1);
+    clearTimeout(animSafetyTimeout);
+    animating=false;animAxis=null;animAngle=0;animStartTime=null;
+    updateUndoBtn();
+    _animC=1;_animS=0;
+    draw();
+    const cb=animCallback;animCallback=null;
+    if(cb) cb();
+  }
+}
+
+let animSafetyTimeout=null;
+function startSlice(axis,layer,targetAngle){
+  animating=true;animAxis=axis;animLayer=layer;
+  animStartAngle=animAngle;
+  animTarget=targetAngle;
+  animStartTime=null;
+  _animC=Math.cos(animAngle);
+  _animS=Math.sin(animAngle);
+  // Safety: clear stuck animating flag after 600ms
+  clearTimeout(animSafetyTimeout);
+  animSafetyTimeout=setTimeout(()=>{
+    if(animating){ animating=false; animAxis=null; animAngle=0; draw(); }
+  }, 600);
+  requestAnimationFrame(animateSlice);
+}
+
+// ═══════════════════════════════════════════════════
+//  COMMIT SLICE
+// ═══════════════════════════════════════════════════
+function commitSlice(axis,layer,dir){
+  const coords=[];
+  for(let x=-1;x<=1;x++) for(let y=-1;y<=1;y++) for(let z=-1;z<=1;z++){
+    if(axis==='x'&&x===layer) coords.push([x,y,z]);
+    if(axis==='y'&&y===layer) coords.push([x,y,z]);
+    if(axis==='z'&&z===layer) coords.push([x,y,z]);
+  }
+  const old={};
+  for(const[x,y,z] of coords) old[`${x},${y},${z}`]=[...stickers[cubieIndex(x,y,z)]];
+
+  for(const[x,y,z] of coords){
+    let nx,ny,nz;
+    if(axis==='y'){
+      if(dir===1){nx=-z;ny=y;nz=x;}else{nx=z;ny=y;nz=-x;}
+    }else if(axis==='x'){
+      if(dir===1){nx=x;ny=z;nz=-y;}else{nx=x;ny=-z;nz=y;}
+    }else{
+      if(dir===1){nx=y;ny=-x;nz=z;}else{nx=-y;ny=x;nz=z;}
+    }
+    const o=old[`${x},${y},${z}`];
+    const n=[null,null,null,null,null,null];
+    if(axis==='y'){
+      n[0]=o[0];n[1]=o[1];
+      if(dir===1){n[2]=o[5];n[3]=o[4];n[4]=o[2];n[5]=o[3];}
+      else       {n[2]=o[4];n[3]=o[5];n[4]=o[3];n[5]=o[2];}
+    }else if(axis==='x'){
+      n[4]=o[4];n[5]=o[5];
+      if(dir===1){n[0]=o[2];n[1]=o[3];n[2]=o[1];n[3]=o[0];}
+      else       {n[0]=o[3];n[1]=o[2];n[2]=o[0];n[3]=o[1];}
+    }else{
+      n[2]=o[2];n[3]=o[3];
+      if(dir===1){n[0]=o[4];n[1]=o[5];n[4]=o[1];n[5]=o[0];}
+      else       {n[0]=o[5];n[1]=o[4];n[4]=o[0];n[5]=o[1];}
+    }
+    stickers[cubieIndex(nx,ny,nz)]=n;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  HIT DETECTION
+// ═══════════════════════════════════════════════════
+function pointInQuad(px,py,quad){
+  // Test clockwise winding
+  let cw=true, ccw=true;
+  for(let i=0;i<4;i++){
+    const a=quad[i],b=quad[(i+1)%4];
+    const cross=(b[0]-a[0])*(py-a[1])-(b[1]-a[1])*(px-a[0]);
+    if(cross>0) cw=false;
+    if(cross<0) ccw=false;
+  }
+  return cw||ccw;
+}
+function hitTest(px,py){
+  // faceHitZones is sorted back-to-front (painter's algorithm)
+  // Iterate in reverse so we test the nearest (frontmost) face first
+  for(let i=faceHitZones.length-1;i>=0;i--){
+    if(pointInQuad(px,py,faceHitZones[i].proj)) return faceHitZones[i];
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════
+//  INTERACTION
+// ═══════════════════════════════════════════════════
+let mode='idle',dragStartX=0,dragStartY=0,dragLastX=0,dragLastY=0;
+let hitFace=null,orbitVelX=0,orbitVelY=0;
+const DRAG_THRESH=8;
+
+const modeEl=document.getElementById('modeIndicator');
+function showMode(t){modeEl.textContent=t;modeEl.classList.add('visible');setTimeout(()=>modeEl.classList.remove('visible'),1200);}
+
+function hitTestWithRadius(px,py,r=6){
+  // Try exact hit first, then try with small offsets to catch near-misses on thin faces
+  const exact = hitTest(px,py);
+  if(exact) return exact;
+  const offsets=[[r,0],[-r,0],[0,r],[0,-r],[r,r],[-r,r],[r,-r],[-r,-r]];
+  for(const[ox,oy] of offsets){
+    const h=hitTest(px+ox,py+oy);
+    if(h) return h;
+  }
+  return null;
+}
+
+function onDown(px,py){
+  if(animating) return;
+  dragStartX=px;dragStartY=py;dragLastX=px;dragLastY=py;
+  orbitVelX=0;orbitVelY=0;
+  const gameActive = (currentMode!=='endless' && currentMode!=='timed') || 
+    (currentMode==='endless' && !!timerInterval) || 
+    (currentMode==='timed' && !!timedInterval);
+  hitFace = gameActive ? hitTestWithRadius(px,py) : null;
+  mode=hitFace?'slice-down':'orbit-down';
+}
+
+function onMove(px,py){
+  const dx=px-dragStartX,dy=py-dragStartY;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+
+  if(mode==='orbit-down'&&dist>DRAG_THRESH){
+    const gameActive = (currentMode!=='endless' && currentMode!=='timed') ||
+      (currentMode==='endless' && !!timerInterval) ||
+      (currentMode==='timed' && !!timedInterval);
+    const reHit = gameActive ? hitTestWithRadius(dragStartX,dragStartY) : null;
+    if(reHit){mode='slice-drag';hitFace=reHit;}
+    else mode='orbit-drag';
+  }
+  if(mode==='slice-down'&&dist>DRAG_THRESH) mode='slice-drag';
+
+  if(mode==='orbit-drag'){
+    orbitVelX=-(py-dragLastY)*0.007;
+    orbitVelY=-(px-dragLastX)*0.007;
+    camRotX+=orbitVelX;camRotY+=orbitVelY;
+    draw();
+    if(timerInterval) resetInactivityTimer();
+  }
+  dragLastX=px;dragLastY=py;
+}
+
+function onUp(px,py){
+  const dx=px-dragStartX,dy=py-dragStartY;
+  if(mode==='slice-drag'&&hitFace) triggerSlice(hitFace,dx,dy);
+  if(mode!=='orbit-drag'){orbitVelX=0;orbitVelY=0;}
+  mode='idle';
+}
+
+function triggerSlice(face,dx,dy){
+  if(animating) return;
+  const absDx=Math.abs(dx),absDy=Math.abs(dy);
+  if(absDx<3&&absDy<3) return;
+
+  function invCamera(v){
+    return rotX(rotY(v,-camRotY),-camRotX);
+  }
+
+  const dragLen=Math.sqrt(dx*dx+dy*dy);
+  const camDrag=invCamera([dx/dragLen, -dy/dragLen, 0]);
+
+  const n=face.norm;
+  const cross=[
+    n[1]*camDrag[2]-n[2]*camDrag[1],
+    n[2]*camDrag[0]-n[0]*camDrag[2],
+    n[0]*camDrag[1]-n[1]*camDrag[0],
+  ];
+
+  const axes=[
+    {axis:'x',vec:[1,0,0],layer:face.x},
+    {axis:'y',vec:[0,1,0],layer:face.y},
+    {axis:'z',vec:[0,0,1],layer:face.z},
+  ];
+
+  let bestAxis=null,bestLayer=null,bestDir=1,bestScore=-Infinity;
+  for(const a of axes){
+    const dot=cross[0]*a.vec[0]+cross[1]*a.vec[1]+cross[2]*a.vec[2];
+    if(Math.abs(dot)>bestScore){
+      bestScore=Math.abs(dot);
+      bestAxis=a.axis;
+      bestLayer=a.layer;
+      bestDir=dot>0?-1:1;
+    }
+  }
+
+  if(!bestAxis) return;
+
+  // Only allow slice moves after the game has started (timer is running)
+  if(currentMode==='endless' && !timerInterval) return;
+  startSlice(bestAxis,bestLayer,bestDir*Math.PI/2);
+  const gameRunning = (currentMode==='endless' && timerInterval) || (currentMode==='timed' && timedInterval);
+  if(gameRunning){
+    moveCount++; updateMoveDisplay(); resetInactivityTimer();
+    moveHistory.push({axis:bestAxis, layer:bestLayer, dir:bestDir});
+    updateUndoBtn();
+    setTimeout(checkWin, 160);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  INERTIA LOOP
+// ═══════════════════════════════════════════════════
+function rafLoop(){
+  if(mode!=='orbit-drag'&&mode!=='slice-drag'){
+    if(Math.abs(orbitVelX)>0.0002||Math.abs(orbitVelY)>0.0002){
+      camRotX+=orbitVelX;camRotY+=orbitVelY;
+      orbitVelX*=0.92;orbitVelY*=0.92;
+      draw();
+    }
+  }
+  requestAnimationFrame(rafLoop);
+}
+
+// ═══════════════════════════════════════════════════
+//  SCRAMBLE / RESET
+// ═══════════════════════════════════════════════════
+function doScramble(onDone){
+  if(animating) return;
+  const axes=['x','y','z'],layers=[-1,0,1],dirs=[1,-1];
+  const moves=Array.from({length:20},()=>({
+    axis:axes[Math.floor(Math.random()*3)],
+    layer:layers[Math.floor(Math.random()*3)],
+    dir:dirs[Math.floor(Math.random()*2)]
+  }));
+  let i=0;
+  function next(){
+    if(i>=moves.length){if(onDone) onDone();return;}
+    const m=moves[i++];
+    animating=true;animAxis=m.axis;animLayer=m.layer;animAngle=0;
+    animTarget=m.dir*Math.PI/2;animCallback=next;
+    requestAnimationFrame(animateSlice);
+  }
+  next();
+}
+
+function resetHome(){camRotX=-0.58;camRotY=0.52;orbitVelX=0;orbitVelY=0;draw();}
+
+// Snap orbit: rotate to nearest 45° increment in the given direction
+const SNAP = Math.PI / 4; // 45°
+let orbitAnimId=null, orbitFromX=0, orbitFromY=0, orbitToX=0, orbitToY=0, orbitStart=null;
+
+function snapOrbit(dir){
+  orbitVelX=0; orbitVelY=0;
+  const from = {x: camRotX, y: camRotY};
+
+  // Find nearest 45° snap target in the given direction
+  function snapTo45(val, delta){
+    const steps = Math.round(val / SNAP);
+    // Move one step in direction
+    const target = (steps + (delta > 0 ? 1 : -1)) * SNAP;
+    return target;
+  }
+
+  let toX = from.x, toY = from.y;
+  if(dir === 'left')  toY = snapTo45(from.y, -1);
+  if(dir === 'right') toY = snapTo45(from.y, +1);
+  if(dir === 'up')    toX = snapTo45(from.x, -1);
+  if(dir === 'down')  toX = snapTo45(from.x, +1);
+
+  // Animate smoothly
+  orbitFromX=from.x; orbitFromY=from.y;
+  orbitToX=toX; orbitToY=toY;
+  orbitStart=null;
+  if(orbitAnimId) cancelAnimationFrame(orbitAnimId);
+
+  function animSnap(ts){
+    if(!orbitStart) orbitStart=ts;
+    const t = Math.min((ts-orbitStart)/220, 1);
+    const e = 1-Math.pow(1-t,4); // quart ease-out
+    camRotX = orbitFromX + (orbitToX-orbitFromX)*e;
+    camRotY = orbitFromY + (orbitToY-orbitFromY)*e;
+    draw();
+    if(t<1) orbitAnimId=requestAnimationFrame(animSnap);
+    else orbitAnimId=null;
+  }
+  orbitAnimId=requestAnimationFrame(animSnap);
+  if(timerInterval) resetInactivityTimer();
+}
+
+function resetCube(){
+  clearInterval(timerInterval); timerInterval=null;
+  clearInterval(timedInterval); timedInterval=null;
+  faceValues=[...THEME_DEFAULTS[currentTheme]];
+  initStickers(); updateSwatches();
+  if(currentMode==='timed') {
+    timedRemaining=timedDuration;
+    document.getElementById('timerDisplay').textContent=formatTimedDisplay(timedRemaining);
+    moveCount=0; moveHistory=[]; updateMoveDisplay(); updateUndoBtn();
+  } else {
+    resetEndlessStats();
+  }
+  draw();
+  document.getElementById('startOverlay').style.display='flex';
+}
+
+// ── Win detection ──────────────────────────────────
+// Screen reader announcement helper
+function announce(msg){
+  const el=document.getElementById('srAnnounce');
+  if(!el) return;
+  el.textContent='';
+  setTimeout(()=>{ el.textContent=msg; },50);
+}
+
+function checkWin(){
+  // Must have an active timer in either mode
+  if(currentMode==='endless' && !timerInterval) return;
+  if(currentMode==='timed' && !timedInterval) return;
+  if(currentMode!=='endless' && currentMode!=='timed') return;
+  for(let fi=0;fi<6;fi++){
+    const vals=[];
+    for(let ci=0;ci<stickers.length;ci++){
+      if(stickers[ci][fi]!==null) vals.push(stickers[ci][fi]);
+    }
+    if(vals.length!==9) return;
+    if(new Set(vals).size!==1) return;
+  }
+  // Stop whichever timer is running
+  clearInterval(timerInterval); timerInterval=null;
+  clearInterval(timedInterval); timedInterval=null;
+  clearTimeout(inactivityTimeout);
+  const timeStr = document.getElementById('timerDisplay').textContent;
+  document.getElementById('winTime').textContent=timeStr;
+  document.getElementById('winMoves').textContent=moveCount;
+  document.getElementById('winOverlay').style.display='flex';document.getElementById('winOverlay').style.pointerEvents='all';
+  announce(`Solved! You completed the cube in ${timeStr} with ${moveCount} moves.`);
+  setTimeout(()=>document.getElementById('winOverlay').querySelector('button')?.focus(),100);
+}
+function closeWin(){
+  document.getElementById('winOverlay').style.display='none';document.getElementById('winOverlay').style.pointerEvents='none';
+}
+
+function showInstructions(){
+  const el=document.getElementById('instructionsOverlay');
+  el.style.display='flex';
+  el.style.pointerEvents='all';
+  setTimeout(()=>el.querySelector('button')?.focus(),50);
+}
+function hideInstructions(){
+  document.getElementById('instructionsOverlay').style.display='none';
+  document.getElementById('instructionsOverlay').style.pointerEvents='none';
+}
+
+function showResetConfirm(){
+  if(currentMode==='endless' && !timerInterval && moveCount===0) return;
+  const el=document.getElementById('resetOverlay');
+  el.style.display='flex';
+  setTimeout(()=>el.querySelector('button')?.focus(),50);
+}
+function hideResetConfirm(){
+  document.getElementById('resetOverlay').style.display='none';
+}
+function confirmReset(){
+  hideResetConfirm();
+  resetCube();
+}
+
+// ═══════════════════════════════════════════════════
+//  GAME MODES
+// ═══════════════════════════════════════════════════
+let currentMode=null;
+let moveCount=0;
+let moveHistory=[]; // each entry: {axis, layer, dir}
+let timerSeconds=0;
+let timerInterval=null;
+
+// ── Timed Mode ───────────────────────────────────
+let timedDuration=0; // total seconds for countdown
+let timedRemaining=0;
+let timedInterval=null;
+
+function showTimedOptions(){
+  const el=document.getElementById('timedOptionsOverlay');
+  el.style.display='flex';
+  el.style.pointerEvents='all';
+  setTimeout(()=>el.querySelector('button')?.focus(),50);
+}
+function hideTimedOptions(){
+  document.getElementById('timedOptionsOverlay').style.display='none';
+  document.getElementById('timedOptionsOverlay').style.pointerEvents='none';
+}
+
+function startTimed(seconds){
+  hideTimedOptions();
+  timedDuration=seconds;
+  timedRemaining=seconds;
+  currentMode='timed';
+  if(isShapeMode) setTheme('shape'); else setTheme('color');
+  document.getElementById('gameSelect').style.display='none';
+  document.querySelector('header').classList.add('hidden');
+  document.getElementById('playScreen').style.display='flex';
+  document.getElementById('endlessHud').classList.add('visible');
+  // Switch HUD label to show countdown
+  document.querySelector('.hud-label:last-of-type') && null; // will use timerDisplay
+  resetTimedStats();
+  faceValues=[...THEME_DEFAULTS[currentTheme]];
+  initStickers(); updateSwatches();
+  resizeCanvas(); draw();
+  // Show start overlay
+  document.getElementById('startOverlay').style.display='flex';
+  document.getElementById('timerDisplay').textContent=formatTimedDisplay(timedRemaining);
+}
+
+function beginTimedScramble(){
+  document.getElementById('startOverlay').style.display='none';
+  announce('Scrambling cube. Get ready!');
+  doScramble(()=>{
+    announce(`Go! You have ${timedDuration===60?'60 seconds':'60 minutes'}.`);
+    startTimedCountdown();
+  });
+}
+
+function startTimedCountdown(){
+  clearInterval(timedInterval);
+  timedInterval=setInterval(()=>{
+    timedRemaining--;
+    document.getElementById('timerDisplay').textContent=formatTimedDisplay(timedRemaining);
+    if(timedRemaining<=10 && timedRemaining>0) announce(`${timedRemaining} seconds remaining.`);
+    if(timedRemaining<=0){
+      clearInterval(timedInterval);
+      timedInterval=null;
+      timedFail();
+    }
+  },1000);
+}
+
+function formatTimedDisplay(s){
+  const m=Math.floor(s/60);
+  const sec=s%60;
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+function resetTimedStats(){
+  moveCount=0; moveHistory=[];
+  clearInterval(timedInterval); timedInterval=null;
+  updateMoveDisplay(); updateUndoBtn();
+  document.getElementById('timerDisplay').textContent=formatTimedDisplay(timedDuration);
+}
+
+function timedFail(){
+  announce("Time's up!");
+  try {
+    animateMelt(()=>{
+      const el=document.getElementById('timedFailOverlay');
+      el.style.display='flex'; el.style.pointerEvents='all';
+      setTimeout(()=>el.querySelector('button')?.focus(),100);
+    });
+  } catch(e) {
+    console.error('animateMelt error:', e.message);
+    const el=document.getElementById('timedFailOverlay');
+    el.style.display='flex'; el.style.pointerEvents='all';
+    setTimeout(()=>el.querySelector('button')?.focus(),100);
+  }
+}
+
+// Melt animation: stickers droop, stretch and fall off the cube
+let meltRafId=null;
+function animateMelt(onDone){
+  if(meltRafId){ cancelAnimationFrame(meltRafId); meltRafId=null; }
+
+  // Snapshot particle data directly — don't call draw() which mutates state
+  const particles = [];
+  for(const f of faceHitZones){
+    if(!f.proj || f.proj.length<4) continue;
+    const cx=(f.proj[0][0]+f.proj[1][0]+f.proj[2][0]+f.proj[3][0])/4;
+    const cy=(f.proj[0][1]+f.proj[1][1]+f.proj[2][1]+f.proj[3][1])/4;
+    if(!isFinite(cx)||!isFinite(cy)) continue;
+    particles.push({
+      cx, cy,
+      val: f.val,
+      bright: typeof f.bright==='number' ? f.bright : 1,
+      vy: 0.4+Math.random()*1.2,
+      vx: (Math.random()-0.5)*1.0,
+      scaleY: 1,
+      alpha: 1,
+      delay: Math.floor(Math.random()*20),
+    });
+  }
+
+  // If no particles, skip straight to done
+  if(particles.length===0){ if(onDone) onDone(); return; }
+
+  const totalFrames=70;
+  let f=0;
+  const bg=isDayMode?'#FCFCFB':'#121212';
+
+  function tick(){
+    try{
+      f++;
+      ctx.fillStyle=bg;
+      ctx.fillRect(0,0,W,H);
+
+      let active=0;
+      for(const p of particles){
+        if(f<=p.delay){active++;continue;}
+        const age=f-p.delay;
+        if(p.alpha<=0) continue;
+        active++;
+        p.vy+=0.15;
+        p.cy+=p.vy;
+        p.cx+=p.vx;
+        p.scaleY=Math.min(3.0,1+age*0.06);
+        p.alpha=Math.max(0,1-age/36);
+        ctx.save();
+        ctx.globalAlpha=p.alpha;
+        ctx.translate(p.cx,p.cy);
+        ctx.scale(1,p.scaleY);
+        ctx.beginPath();
+        const s=10;
+        ctx.arc(-s+3,-s+3,3,Math.PI,Math.PI*1.5);
+        ctx.arc(s-3,-s+3,3,Math.PI*1.5,0);
+        ctx.arc(s-3,s-3,3,0,Math.PI*0.5);
+        ctx.arc(-s+3,s-3,3,Math.PI*0.5,Math.PI);
+        ctx.closePath();
+        try{
+          ctx.fillStyle=isColor(p.val)?adjBright(p.val,p.bright):(isDayMode?'#d0d0ce':'#333');
+        }catch(e){
+          ctx.fillStyle='#888';
+        }
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.globalAlpha=1;
+      if(f<totalFrames||active>0){
+        meltRafId=requestAnimationFrame(tick);
+      }else{
+        meltRafId=null;
+        if(onDone) onDone();
+      }
+    }catch(e){
+      console.error('melt tick:',e.message);
+      meltRafId=null;
+      ctx.globalAlpha=1;
+      if(onDone) onDone();
+    }
+  }
+  meltRafId=requestAnimationFrame(tick);
+}
+
+function closeTimedFail(){
+  if(meltRafId){ cancelAnimationFrame(meltRafId); meltRafId=null; }
+  document.getElementById('timedFailOverlay').style.display='none';
+  document.getElementById('timedFailOverlay').style.pointerEvents='none';
+}
+
+function startEndless(){
+  currentMode='endless';
+  if(isShapeMode) setTheme('shape'); else setTheme('color');
+  document.getElementById('gameSelect').style.display='none';
+  document.querySelector('header').classList.add('hidden');
+  document.getElementById('playScreen').style.display='flex';
+  // Show HUD but zeroed — timer/moves inactive until scramble done
+  document.getElementById('endlessHud').classList.add('visible');
+  resetEndlessStats();
+  faceValues=[...THEME_DEFAULTS[currentTheme]];
+  initStickers();updateSwatches();
+  resizeCanvas();
+  draw();
+  // Show solved cube with Start button overlay
+  const overlay = document.getElementById('startOverlay');
+  overlay.style.display='flex';
+}
+
+function beginScramble(){
+  document.getElementById('startOverlay').style.display='none';
+  announce('Scrambling cube. Get ready!');
+  if(currentMode==='timed'){
+    doScramble(()=>{
+      announce(`Go! You have ${timedDuration===60?'60 seconds':'60 minutes'}.`);
+      startTimedCountdown();
+    });
+  } else {
+    doScramble(()=>{
+      startEndlessTimer();
+      announce('Go! Timer started. Solve the cube.');
+    });
+  }
+}
+
+function startEndlessTimer(){
+  clearInterval(timerInterval);
+  timerSeconds=0;
+  updateTimerDisplay();
+  timerInterval=setInterval(()=>{
+    timerSeconds++;
+    updateTimerDisplay();
+  },1000);
+  resetInactivityTimer();
+}
+
+// ── Inactivity pause ──────────────────────────────
+let inactivityTimeout=null;
+let isPaused=false;
+const INACTIVITY_SECONDS=60;
+
+function resetInactivityTimer(){
+  clearTimeout(inactivityTimeout);
+  if(!timerInterval || isPaused) return;
+  inactivityTimeout=setTimeout(pauseGame, INACTIVITY_SECONDS*1000);
+}
+
+function pauseGame(){
+  if(!timerInterval || isPaused) return;
+  isPaused=true;
+  clearInterval(timerInterval);
+  timerInterval=null;
+  clearTimeout(inactivityTimeout);
+  document.getElementById('pauseOverlay').style.display='flex';document.getElementById('pauseOverlay').style.pointerEvents='all';
+  announce('Game paused due to inactivity. Tap Resume to continue.');
+  setTimeout(()=>document.getElementById('pauseOverlay').querySelector('button')?.focus(),100);
+}
+
+function resumeGame(){
+  if(!isPaused) return;
+  isPaused=false;
+  document.getElementById('pauseOverlay').style.display='none';document.getElementById('pauseOverlay').style.pointerEvents='none';
+  timerInterval=setInterval(()=>{
+    timerSeconds++;
+    updateTimerDisplay();
+  },1000);
+  resetInactivityTimer();
+  announce('Game resumed.');
+}
+
+function resetEndlessStats(){
+  moveCount=0;
+  moveHistory=[];
+  updateUndoBtn();
+  timerSeconds=0;
+  isPaused=false;
+  clearInterval(timerInterval);
+  clearTimeout(inactivityTimeout);
+  timerInterval=null;
+  document.getElementById('pauseOverlay').style.display='none';document.getElementById('pauseOverlay').style.pointerEvents='none';
+  updateTimerDisplay();
+  updateMoveDisplay();
+}
+
+function updateTimerDisplay(){
+  const m=Math.floor(timerSeconds/60);
+  const s=timerSeconds%60;
+  // Always mm:ss format — stays readable up to 99:59
+  document.getElementById('timerDisplay').textContent=
+    `${m.toString().padStart(m>=10?2:1,'0')}:${s.toString().padStart(2,'0')}`;
+}
+
+function updateMoveDisplay(){
+  document.getElementById('moveCounter').textContent=moveCount;
+}
+
+function updateUndoBtn(){
+  const btn = document.getElementById('undoBtn');
+  if(!btn) return;
+  const canUndo = moveHistory.length > 0 && !animating;
+  btn.disabled = !canUndo;
+  btn.style.opacity = canUndo ? '1' : '0.4';
+}
+
+function undoMove(){
+  if(animating || moveHistory.length===0) return;
+  const last = moveHistory.pop();
+  // Reverse the move by flipping the direction
+  startSlice(last.axis, last.layer, -last.dir * Math.PI/2);
+  moveCount = Math.max(0, moveCount-1);
+  updateMoveDisplay();
+  updateUndoBtn();
+}
+
+function goToMenu(){
+  currentMode=null;
+  clearInterval(timerInterval); timerInterval=null;
+  clearInterval(timedInterval); timedInterval=null;
+  clearTimeout(inactivityTimeout);
+  isPaused=false;
+  document.getElementById('startOverlay').style.display='none';
+  document.getElementById('pauseOverlay').style.display='none'; document.getElementById('pauseOverlay').style.pointerEvents='none';
+  document.getElementById('timedFailOverlay').style.display='none'; document.getElementById('timedFailOverlay').style.pointerEvents='none';
+  document.getElementById('playScreen').style.display='none';
+  document.getElementById('endlessHud').classList.remove('visible');
+  document.querySelector('header').classList.remove('hidden');
+  document.getElementById('gameSelect').style.display='flex';
+  if(!previewRafId) previewLoop();
+}
+
+// ═══════════════════════════════════════════════════
+//  THEME SWITCHER
+// ═══════════════════════════════════════════════════
+function setTheme(theme){
+  const prevDefaults = [...THEME_DEFAULTS[currentTheme]];
+  const newDefaults  = [...THEME_DEFAULTS[theme]];
+  currentTheme = theme;
+  document.querySelectorAll('.theme-tab').forEach(t=>{
+    t.classList.toggle('active', t.textContent.trim().toLowerCase()===theme);
+  });
+
+  if(currentMode === 'endless' || currentMode === 'timed'){
+    // Remap existing sticker values to new theme equivalents by face index
+    const faceMap = {};
+    faceValues.forEach((old, fi) => { faceMap[old] = newDefaults[fi]; });
+    for(let i=0; i<stickers.length; i++){
+      stickers[i] = stickers[i].map(v => v===null ? null : (faceMap[v] ?? v));
+    }
+    faceValues = newDefaults;
+  } else {
+    faceValues = newDefaults;
+    initStickers();
+  }
+
+  updateSwatches();
+  closePicker();
+  draw();
+}
+
+// ═══════════════════════════════════════════════════
+//  PICKER
+// ═══════════════════════════════════════════════════
+let activeFace=null;
+
+// Apply a full palette to all 6 faces
+function applyPalette(key){
+  currentPalette = key;
+  const colors = COLOR_PALETTES[key].colors;
+  // Remap existing stickers
+  const oldVals = [...faceValues];
+  for(let ci=0;ci<stickers.length;ci++){
+    for(let fi=0;fi<6;fi++){
+      const oldIdx = oldVals.indexOf(stickers[ci][fi]);
+      if(oldIdx>=0) stickers[ci][fi] = colors[oldIdx];
+    }
+  }
+  faceValues = [...colors];
+  THEME_DEFAULTS.color = [...colors];
+  updateSwatches();
+  buildPickerContent();
+  draw();
+}
+
+function openPicker(fi){
+  const popup=document.getElementById('pickerPopup');
+  if(activeFace===fi&&popup.classList.contains('open')){closePicker();return;}
+  activeFace=fi;
+  document.querySelectorAll('.face-swatch').forEach((s,i)=>s.classList.toggle('active',i===fi));
+  // Only show face label in shape mode where it's relevant
+  const label = document.getElementById('pickerLabel');
+  if(currentTheme==='color'){
+    label.textContent='';
+    label.style.display='none';
+  } else {
+    label.textContent=FACE_NAMES[fi]+' face';
+    label.style.display='';
+  }
+  buildPickerContent();
+  popup.classList.add('open');
+  document.getElementById('pickerBackdrop').classList.add('open');
+}
+
+function closePicker(){
+  document.getElementById('pickerPopup').classList.remove('open');
+  document.getElementById('pickerBackdrop').classList.remove('open');
+  activeFace=null;
+  document.querySelectorAll('.face-swatch').forEach(s=>s.classList.remove('active'));
+}
+
+function buildPickerContent(){
+  const container=document.getElementById('pickerContent');
+  container.innerHTML='';
+  const usedByOthers=faceValues.filter((_,i)=>i!==activeFace);
+
+  if(currentTheme==='color'){
+    // ── Palette selector ──
+    const label=document.createElement('div');
+    label.style.cssText='font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;';
+    label.textContent='Choose a palette';
+    container.appendChild(label);
+
+    const grid=document.createElement('div');
+    grid.className='palette-grid';
+    Object.entries(COLOR_PALETTES).forEach(([key,pal])=>{
+      const row=document.createElement('div');
+      row.className='palette-row'+(currentPalette===key?' selected':'');
+      row.onclick=()=>applyPalette(key);
+
+      const swatches=document.createElement('div');
+      swatches.className='palette-swatches';
+      pal.colors.forEach(c=>{
+        const s=document.createElement('div');
+        s.className='palette-swatch';
+        s.style.background=c;
+        // add border for very light/white swatches
+        if(colorsSimilar(c, isDayMode?BG_LIGHT:BG_DARK, 30)) s.style.border='1px solid var(--panel-border)';
+        swatches.appendChild(s);
+      });
+
+      const name=document.createElement('div');
+      name.className='palette-name';
+      name.textContent=pal.name;
+
+      row.appendChild(swatches);
+      row.appendChild(name);
+      grid.appendChild(row);
+    });
+    container.appendChild(grid);
+
+    // ── Customise this palette ──
+    const divider=document.createElement('div');
+    divider.style.cssText='height:1px;background:var(--panel-border);margin:12px 0;';
+    container.appendChild(divider);
+
+    const customLabel=document.createElement('div');
+    customLabel.style.cssText='font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;';
+    customLabel.textContent='Customise this palette';
+    container.appendChild(customLabel);
+
+    // Show all 6 face swatches as clickable color pickers
+    const faceGrid=document.createElement('div');
+    faceGrid.style.cssText='display:grid;grid-template-columns:repeat(6,1fr);gap:6px;';
+    FACE_NAMES.forEach((faceName,fi)=>{
+      const cell=document.createElement('div');
+      cell.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px;';
+
+      // Color swatch that opens native color picker
+      const swatch=document.createElement('div');
+      swatch.style.cssText=`width:36px;height:36px;border-radius:8px;cursor:pointer;
+        background:${faceValues[fi]};position:relative;overflow:hidden;`;
+      // Hidden color input overlaid on swatch
+      const inp=document.createElement('input');
+      inp.type='color';
+      inp.value=isColor(faceValues[fi])?faceValues[fi]:'#ffffff';
+      inp.style.cssText='position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0;';
+      inp.addEventListener('change',((faceIndex,swatchEl)=>e=>{
+        const c=e.target.value;
+        const prevActive=activeFace;
+        activeFace=faceIndex;
+        setFaceValue(c);
+        activeFace=prevActive;
+        swatchEl.style.background=c;
+        currentPalette='custom';
+      })(fi,swatch));
+      inp.addEventListener('input',((faceIndex,swatchEl)=>e=>{
+        const c=e.target.value;
+        swatchEl.style.background=c;
+        const prevActive=activeFace;
+        activeFace=faceIndex;
+        setFaceValue(c);
+        activeFace=prevActive;
+        currentPalette='custom';
+      })(fi,swatch));
+      swatch.dataset.fi=fi;
+      swatch.appendChild(inp);
+      cell.appendChild(swatch);
+
+      // Face label
+      const lbl=document.createElement('div');
+      lbl.style.cssText='font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:"Space Mono",monospace;';
+      lbl.textContent=faceName.split('—')[0].trim(); // just the letter
+      cell.appendChild(lbl);
+      faceGrid.appendChild(cell);
+    });
+    container.appendChild(faceGrid);
+
+  } else if(currentTheme==='shape'){
+    const grid=document.createElement('div');
+    grid.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;';
+    SHAPE_OPTIONS.forEach(opt=>{
+      const el=document.createElement('div');
+      el.className='emoji-option';
+      el.setAttribute('role','button');
+      const label=opt.id.charAt(0).toUpperCase()+opt.id.slice(1);
+      const taken=usedByOthers.includes(opt.id);
+      el.setAttribute('aria-label', label+(taken?' — already in use':''));
+      el.setAttribute('tabindex', taken?'-1':'0');
+      el.style.cssText='min-width:44px;min-height:44px;border-radius:10px;cursor:pointer;border:2px solid var(--panel-border);background:var(--panel-bg);display:flex;align-items:center;justify-content:center;transition:all .15s;';
+      if(faceValues[activeFace]===opt.id) el.style.borderColor='var(--text)';
+      if(taken) el.style.opacity='0.25';
+      const fill = isDayMode ? '#121212' : '#FCFCFB';
+      let svgContent;
+      if(opt.id==='circle'){
+        svgContent=`<circle cx="24" cy="24" r="16" fill="${fill}"/>`;
+      } else {
+        svgContent=`<path d="${SHAPE_SVGS[opt.id]}" fill="${fill}"/>`;
+      }
+      const svgEl=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svgEl.setAttribute('viewBox','0 0 48 48');
+      svgEl.setAttribute('width','28');
+      svgEl.setAttribute('height','28');
+      svgEl.innerHTML=svgContent;
+      el.appendChild(svgEl);
+      if(!taken){
+        el.onclick=()=>setFaceValue(opt.id);
+        el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setFaceValue(opt.id);}};
+      }
+      grid.appendChild(el);
+    });
+    container.appendChild(grid);
+
+  } else {
+    const grid=document.createElement('div');
+    grid.className='emoji-grid';
+    ANIMAL_OPTIONS.forEach(opt=>{
+      const el=document.createElement('div');
+      el.className='emoji-option';
+      const taken=usedByOthers.includes(opt.id);
+      if(faceValues[activeFace]===opt.id) el.classList.add('selected');
+      if(taken) el.classList.add('taken');
+      el.innerHTML=`${opt.emoji}<span class="elabel">${opt.label}</span>`;
+      if(!taken) el.onclick=()=>setFaceValue(opt.id);
+      grid.appendChild(el);
+    });
+    container.appendChild(grid);
+  }
+}
+
+function setFaceValue(value){
+  if(activeFace===null) return;
+  const oldVal=faceValues[activeFace];
+  faceValues[activeFace]=value;
+  // Replace every sticker holding oldVal, regardless of which face slot it's in
+  // (after scrambling, stickers from one face are scattered across many cubies and slots)
+  for(let ci=0;ci<stickers.length;ci++){
+    for(let fi=0;fi<6;fi++){
+      if(stickers[ci][fi]===oldVal) stickers[ci][fi]=value;
+    }
+  }
+  updateSwatches();
+  buildPickerContent();
+  draw();
+}
+
+function updateSwatches(){
+  faceValues.forEach((v,i)=>{
+    ['sw-'+i, 'psw-'+i].forEach(id=>{
+      const sw=document.getElementById(id);
+      if(!sw) return;
+      if(isColor(v)){
+        sw.style.background=v;sw.textContent='';sw.innerHTML='';
+      } else if(isShape(v)){
+        const fill = isDayMode ? '#121212' : '#FCFCFB';
+        const bg   = isDayMode ? '#FFFFFF' : 'rgba(30,22,46,0.85)';
+        sw.style.background = bg;
+        sw.style.border = isDayMode ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.1)';
+        sw.innerHTML='';
+        let svgContent;
+        if(v==='circle'){
+          svgContent=`<circle cx="24" cy="24" r="16" fill="${fill}"/>`;
+        } else if(v==='mushroom'){
+          svgContent=`<path d="M24 8C16.562 8 10.4787 14.6291 10.0269 22.9996C9.99715 23.5511 10.4477 24 11 24H37C37.5523 24 38.0028 23.5511 37.9731 22.9996C37.5213 14.6291 31.438 8 24 8Z" fill="${fill}"/>
+            <path d="M24 24C16.562 24 10.4787 30.6291 10.0269 38.9996C9.99715 39.5511 10.4477 40 11 40H37C37.5523 40 38.0028 39.5511 37.9731 38.9996C37.5213 30.6291 31.438 24 24 24Z" fill="${fill}"/>`;
+        } else {
+          svgContent=`<path d="${SHAPE_SVGS[v]}" fill="${fill}"/>`;
+        }
+        const svgEl=document.createElementNS('http://www.w3.org/2000/svg','svg');
+        svgEl.setAttribute('viewBox','0 0 48 48');
+        svgEl.setAttribute('width','18');
+        svgEl.setAttribute('height','18');
+        svgEl.innerHTML=svgContent;
+        sw.appendChild(svgEl);
+      } else if(isAnimal(v)){
+        const opt=ANIMAL_OPTIONS.find(o=>o.id===v);
+        sw.style.background='rgba(255,255,255,0.06)';
+        sw.textContent=opt?opt.emoji:'?';
+      }
+    });
+  });
+}
+
+// close picker on outside click (backdrop handles tap, this catches keyboard/other)
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  switch(e.key){
+    case 'ArrowLeft':  e.preventDefault(); if(currentMode) snapOrbit('left');  break;
+    case 'ArrowRight': e.preventDefault(); if(currentMode) snapOrbit('right'); break;
+    case 'ArrowUp':    e.preventDefault(); if(currentMode) snapOrbit('up');    break;
+    case 'ArrowDown':  e.preventDefault(); if(currentMode) snapOrbit('down');  break;
+    case 'h': case 'H': if(currentMode) resetHome(); break;
+    case 'u': case 'U': if(currentMode) undoMove(); break;
+    case 'Escape':
+      closePicker();
+      hideInstructions();
+      hideResetConfirm();
+      closeWin();
+      if(document.getElementById('pauseOverlay').style.display==='flex') resumeGame();
+      break;
+  }
+});
+
+// ═══════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═══════════════════════════════════════════════════
+canvas.addEventListener('mousedown',e=>{
+  const r=canvas.getBoundingClientRect();
+  onDown(e.clientX-r.left,e.clientY-r.top);
+  canvas.classList.add('grabbing');
+});
+document.addEventListener('mousemove',e=>{
+  if(mode==='idle') return;
+  const r=canvas.getBoundingClientRect();
+  onMove(e.clientX-r.left,e.clientY-r.top);
+});
+document.addEventListener('mouseup',e=>{
+  if(mode==='idle') return;
+  const r=canvas.getBoundingClientRect();
+  onUp(e.clientX-r.left,e.clientY-r.top);
+  canvas.classList.remove('grabbing');
+});
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect(),t=e.touches[0];
+  onDown(t.clientX-r.left,t.clientY-r.top);
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect(),t=e.touches[0];
+  onMove(t.clientX-r.left,t.clientY-r.top);
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect(),t=e.changedTouches[0];
+  onUp(t.clientX-r.left,t.clientY-r.top);
+},{passive:false});
+
+// ═══════════════════════════════════════════════════
+//  DAY / NIGHT TOGGLE
+// ═══════════════════════════════════════════════════
+let isDayMode = true;
+let backingColor = '#111';
+
+// Flat SVG icons for day/night — sized to fit the button, color matches var(--text)
+const MOON_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>`;
+const SUN_SVG  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="2" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="19" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+
+function setDaynightIcons(){
+  // In day mode show moon (click to go night), in night mode show sun (click to go day)
+  const icon = isDayMode ? MOON_SVG : SUN_SVG;
+  document.querySelectorAll('.daynight-btn, .game-select-daynight').forEach(btn=>{
+    btn.innerHTML = icon;
+  });
+}
+
+function toggleDayNight(){
+  isDayMode = !isDayMode;
+  document.documentElement.classList.toggle('day', isDayMode);
+  setDaynightIcons();
+  backingColor = isDayMode ? '#2a2040' : '#111';
+  updateSwatches();
+  if(activeFace!==null) buildPickerContent();
+  if(currentMode===null) drawPreview();
+  draw();
+}
+
+// ═══════════════════════════════════════════════════
+//  PREVIEW CUBE (game select screen)
+// ═══════════════════════════════════════════════════
+const previewCanvas = document.getElementById('previewCanvas');
+const pCtx = previewCanvas.getContext('2d');
+
+let pW = 300, pH = 300;
+let pCamX = -0.58, pCamY = 0.52;
+const P_FOV = 5.0, P_GAP = 0.06;
+// Cube corners project to ~√3*1.73 ≈ 3 units at worst angle with perspective.
+// Safe scale = (pW/2 * 0.78) / (FOV/(FOV-1.5)) to keep all corners inside canvas.
+function pScale(){ return pW * 0.19; }
+
+function setupPreviewCanvas(){
+  const byWidth = Math.min(320, window.innerWidth - 48);
+  const byHeight = Math.floor(window.innerHeight * 0.30);
+  const size = Math.min(byWidth, byHeight);
+  pW = size; pH = size;
+  previewCanvas.width = pW;
+  previewCanvas.height = pH;
+}
+
+function pRotX(v,a){const c=Math.cos(a),s=Math.sin(a);return[v[0],v[1]*c-v[2]*s,v[1]*s+v[2]*c];}
+function pRotY(v,a){const c=Math.cos(a),s=Math.sin(a);return[v[0]*c+v[2]*s,v[1],-v[0]*s+v[2]*c];}
+function pCamera(v){return pRotY(pRotX(v,pCamX),pCamY);}
+function pProject(v){
+  const sc=pScale()*P_FOV/(P_FOV+v[2]);
+  return[pW/2+v[0]*sc,pH/2-v[1]*sc];
+}
+
+const PREVIEW_COLORS = [...COLOR_PALETTES.classic.colors];
+const PREVIEW_SHAPES = ['triangle','circle','flower','mushroom','arch','square'];
+
+let isShapeMode = false;
+
+function setShapeMode(on){
+  isShapeMode = on;
+  const cards = document.getElementById('gameCards');
+  cards.classList.toggle('shape-mode', on);
+  drawPreview();
+}
+
+function drawPreview(){
+  pCtx.clearRect(0,0,pW,pH);
+  const faces=[];
+  const lights=[
+    {dir:[0.6,1.0,2.5],strength:0.55},
+    {dir:[-1.2,0.4,1.8],strength:0.40},
+    {dir:[0.2,1.5,-1.0],strength:0.15},
+  ];
+
+  const stickers = isShapeMode ? PREVIEW_SHAPES : PREVIEW_COLORS;
+  const dayShape = isShapeMode && isDayMode;
+
+  for(let x=-1;x<=1;x++) for(let y=-1;y<=1;y++) for(let z=-1;z<=1;z++){
+    for(const fd of FACE_DEFS){
+      const isOuter=Math.abs(x+fd.norm[0])>1||Math.abs(y+fd.norm[1])>1||Math.abs(z+fd.norm[2])>1;
+      if(!isOuter) continue;
+      const val = stickers[fd.fi];
+      const fc=[x+fd.norm[0]*0.5,y+fd.norm[1]*0.5,z+fd.norm[2]*0.5];
+      const S=0.5-P_GAP, BS=0.5-P_GAP*0.25;
+      const corners3d=[
+        [fc[0]+(-fd.u[0]-fd.v[0])*S,fc[1]+(-fd.u[1]-fd.v[1])*S,fc[2]+(-fd.u[2]-fd.v[2])*S],
+        [fc[0]+(fd.u[0]-fd.v[0])*S, fc[1]+(fd.u[1]-fd.v[1])*S, fc[2]+(fd.u[2]-fd.v[2])*S],
+        [fc[0]+(fd.u[0]+fd.v[0])*S, fc[1]+(fd.u[1]+fd.v[1])*S, fc[2]+(fd.u[2]+fd.v[2])*S],
+        [fc[0]+(-fd.u[0]+fd.v[0])*S,fc[1]+(-fd.u[1]+fd.v[1])*S,fc[2]+(-fd.u[2]+fd.v[2])*S],
+      ];
+      const back3d=[
+        [fc[0]+(-fd.u[0]-fd.v[0])*BS,fc[1]+(-fd.u[1]-fd.v[1])*BS,fc[2]+(-fd.u[2]-fd.v[2])*BS],
+        [fc[0]+(fd.u[0]-fd.v[0])*BS, fc[1]+(fd.u[1]-fd.v[1])*BS, fc[2]+(fd.u[2]-fd.v[2])*BS],
+        [fc[0]+(fd.u[0]+fd.v[0])*BS, fc[1]+(fd.u[1]+fd.v[1])*BS, fc[2]+(fd.u[2]+fd.v[2])*BS],
+        [fc[0]+(-fd.u[0]+fd.v[0])*BS,fc[1]+(-fd.u[1]+fd.v[1])*BS,fc[2]+(-fd.u[2]+fd.v[2])*BS],
+      ];
+      const camC=corners3d.map(v=>pCamera(v));
+      const camN=pCamera(fd.norm);
+      if(camN[2]>0) continue;
+      const n=fd.norm;
+      let diffuse=0;
+      for(const l of lights){
+        const len=Math.sqrt(l.dir[0]**2+l.dir[1]**2+l.dir[2]**2);
+        const ld=l.dir.map(d=>d/len);
+        diffuse+=Math.max(0,n[0]*ld[0]+n[1]*ld[1]+n[2]*ld[2])*l.strength;
+      }
+      const bright=Math.min(1,0.70+diffuse);
+      const avgZ=camC.reduce((s,v)=>s+v[2],0)/4;
+      const proj=camC.map(v=>pProject(v));
+      const projB=back3d.map(v=>pProject(pCamera(v)));
+      faces.push({proj,projB,avgZ,val,bright,fd});
+    }
+  }
+
+  faces.sort((a,b)=>b.avgZ-a.avgZ);
+
+  for(const f of faces){
+    if(!isDayMode){
+      roundedQuadPath(pCtx,f.projB,10);
+      pCtx.fillStyle=backingColor;
+      pCtx.fill();
+    }
+    roundedQuadPath(pCtx,f.proj,8);
+
+    if(isShapeMode){
+      // Sticker fill: day=#FFFFFF, night=#000000
+      pCtx.fillStyle = isDayMode ? '#FFFFFF' : '#000000';
+      pCtx.fill();
+      // Sticker stroke: day=#F2F2F1, night=#1C1C1C
+      pCtx.strokeStyle = isDayMode ? '#F2F2F1' : '#1C1C1C';
+      pCtx.lineWidth = 1.5;
+      roundedQuadPath(pCtx,f.proj,8);
+      pCtx.stroke();
+      // Draw shape in UV space — fill only, no stroke
+      pCtx.save();
+      roundedQuadPath(pCtx,f.proj,8);
+      pCtx.clip();
+      const cx2=(f.proj[0][0]+f.proj[1][0]+f.proj[2][0]+f.proj[3][0])*0.25;
+      const cy2=(f.proj[0][1]+f.proj[1][1]+f.proj[2][1]+f.proj[3][1])*0.25;
+      let ux=(f.proj[1][0]+f.proj[2][0])*0.5-cx2;
+      let uy=(f.proj[1][1]+f.proj[2][1])*0.5-cy2;
+      let vx=(f.proj[2][0]+f.proj[3][0])*0.5-cx2;
+      let vy=(f.proj[2][1]+f.proj[3][1])*0.5-cy2;
+      if(vy < 0){ ux=-ux; uy=-uy; vx=-vx; vy=-vy; }
+      pCtx.setTransform(ux,uy,vx,vy,cx2,cy2);
+      drawShapeOnCanvas(pCtx,f.val,0,0,2,f.bright,isDayMode);
+      pCtx.restore();
+    } else {
+      pCtx.fillStyle=adjBright(f.val,f.bright);
+      pCtx.fill();
+    }
+  }
+}
+
+// Slow auto-rotation loop for preview
+let previewRafId=null;
+function previewLoop(){
+  if(currentMode!==null){previewRafId=null;return;}
+  pCamY += 0.001;
+  pCamX = -0.58 + Math.sin(pCamY*0.2)*0.08;
+  drawPreview();
+  previewRafId=requestAnimationFrame(previewLoop);
+}
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+// Apply default day mode
+document.documentElement.classList.add('day');
+setDaynightIcons();
+document.getElementById('gsDay').innerHTML = MOON_SVG;
+initStickers();
+updateSwatches();
+setupPreviewCanvas();
+drawPreview();
+previewLoop();
+window.addEventListener('resize',()=>{
+  setupPreviewCanvas();
+  drawPreview();
+  if(currentMode) resizeCanvas();
+});
+rafLoop();
+</script>
+<!-- Win overlay -->
+<div id="winOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);
+  z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);
+  pointer-events:none;"
+  role="dialog" aria-modal="true" aria-labelledby="winTitle">
+  <div style="background:var(--surface);border:1px solid var(--panel-border);border-radius:20px;
+    padding:32px 28px;max-width:300px;width:90%;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">🎉</div>
+    <div id="winTitle" style="font-family:'Space Mono',monospace;font-size:20px;color:var(--text);margin-bottom:6px;">Solved!</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6;">
+      You solved the cube in<br>
+      <span id="winTime" style="font-family:'Space Mono',monospace;color:var(--text);font-size:16px;"></span>
+      &nbsp;with&nbsp;
+      <span id="winMoves" style="font-family:'Space Mono',monospace;color:var(--text);font-size:16px;"></span> moves
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" onclick="closeWin();goToMenu();" style="flex:1;">Menu</button>
+      <button class="btn primary" onclick="closeWin();resetCube();" style="flex:1;">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timed mode options overlay -->
+<div id="timedOptionsOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);
+  z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);"
+  role="dialog" aria-modal="true" aria-labelledby="timedOptionsTitle">
+  <div style="background:var(--surface);border:1px solid var(--panel-border);border-radius:20px;
+    padding:32px 28px;max-width:320px;width:90%;text-align:center;">
+    <div id="timedOptionsTitle" style="font-family:'Space Mono',monospace;font-size:18px;
+      color:var(--text);margin-bottom:8px;">Timed Mode</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:28px;line-height:1.5;">
+      The clock counts down. Solve the cube before time runs out.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <button class="btn primary" onclick="startTimed(60)"
+        style="width:100%;padding:16px;font-size:13px;border-radius:14px;">
+        60 Seconds
+        <span style="display:block;font-size:11px;opacity:.7;margin-top:2px;text-transform:none;letter-spacing:0;">Fast &amp; intense</span>
+      </button>
+      <button class="btn primary" onclick="startTimed(3600)"
+        style="width:100%;padding:16px;font-size:13px;border-radius:14px;">
+        60 Minutes
+        <span style="display:block;font-size:11px;opacity:.7;margin-top:2px;text-transform:none;letter-spacing:0;">Take your time</span>
+      </button>
+      <button class="btn" onclick="hideTimedOptions()" style="width:100%;margin-top:4px;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timed fail overlay -->
+<div id="timedFailOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);
+  z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);"
+  role="dialog" aria-modal="true" aria-labelledby="timedFailTitle">
+  <div style="background:var(--surface);border:1px solid var(--panel-border);border-radius:20px;
+    padding:32px 28px;max-width:300px;width:90%;text-align:center;">
+    <div style="font-size:36px;margin-bottom:8px;">⏰</div>
+    <div id="timedFailTitle" style="font-family:'Space Mono',monospace;font-size:20px;
+      color:var(--text);margin-bottom:6px;">Time's Up!</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:24px;">
+      Try again?
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" onclick="closeTimedFail();goToMenu();" style="flex:1;">Menu</button>
+      <button class="btn primary" onclick="closeTimedFail();showTimedOptions();" style="flex:1;">Try Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pause overlay -->
+<div id="pauseOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);
+  z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(6px);
+  pointer-events:none;"
+  role="dialog" aria-modal="true" aria-labelledby="pauseTitle">
+  <div style="background:var(--surface);border:1px solid var(--panel-border);border-radius:20px;
+    padding:32px 28px;max-width:300px;width:90%;text-align:center;">
+    <div id="pauseTitle" style="font-family:'Space Mono',monospace;font-size:20px;color:var(--text);margin-bottom:8px;">Paused</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px;">
+      You were inactive for a while.<br>Your time is paused.
+    </div>
+    <button class="btn primary" onclick="resumeGame()" style="width:100%;padding:12px;">Resume</button>
+  </div>
+</div>
+
+<!-- Instructions overlay — body level, above all z-index stacking contexts -->
+<div id="instructionsOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);
+  z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(6px);"
+  role="dialog" aria-modal="true" aria-labelledby="instructionsTitle">
+  <div style="background:var(--surface);border:1px solid var(--panel-border);border-radius:20px;
+    padding:28px 24px;max-width:320px;width:90%;max-height:85vh;overflow-y:auto;">
+    <div id="instructionsTitle" style="font-family:'Space Mono',monospace;font-size:17px;color:var(--text);
+      margin-bottom:20px;text-align:center;">How to Play</div>
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--text);margin-bottom:4px;">Rotate a slice</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.5;">Drag on a face to rotate that slice of the cube</div>
+      </div>
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--text);margin-bottom:4px;">Orbit the cube</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.5;">Drag outside the cube or on the background to rotate the view</div>
+      </div>
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:13px;color:var(--text);margin-bottom:4px;">Solve it</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.5;">Match each face so all 9 stickers are the same color or shape</div>
+      </div>
+      <div style="height:1px;background:var(--panel-border);"></div>
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:11px;color:var(--text);margin-bottom:8px;">Keyboard shortcuts</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;">View</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--muted);">Orbit</span>
+            <span style="font-family:'Space Mono',monospace;color:var(--text);font-size:12px;">W A S D  or  ↑ ↓ ← →</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--muted);">Home view</span>
+            <span style="font-family:'Space Mono',monospace;color:var(--text);font-size:12px;">H</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:6px;margin-bottom:2px;">Slices</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--muted);">X-axis (top/bottom rows)</span>
+            <span style="font-family:'Space Mono',monospace;color:var(--text);font-size:12px;">I / K</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--muted);">Y-axis (left/right cols)</span>
+            <span style="font-family:'Space Mono',monospace;color:var(--text);font-size:12px;">J / L</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--muted);">Z-axis (front/back rings)</span>
+            <span style="font-family:'Space Mono',monospace;color:var(--text);font-size:12px;">U / O</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--muted);">Outer layer</span>
+            <span style="font-family:'Space Mono',monospace;color:var(--text);font-size:12px;">Shift + above</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--muted);">Opposite outer layer</span>
+            <span style="font-family:'Space Mono',monospace;color:var(--text);font-size:12px;">Ctrl + above</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:6px;margin-bottom:2px;">Other</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--muted);">Undo</span>
+            <span style="font-family:'Space Mono',monospace;color:var(--text);font-size:12px;">U  (no slice keys held)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;">
+            <span style="color:var(--muted);">Close / dismiss</span>
+            <span style="font-family:'Space Mono',monospace;color:var(--text);font-size:12px;">Esc</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn primary" onclick="hideInstructions()"
+      style="width:100%;margin-top:24px;padding:12px;">Got it</button>
+  </div>
+</div>
+
+</body>
+</html>
+
+<!-- Picker backdrop -->
+<div class="picker-backdrop" id="pickerBackdrop" onclick="closePicker()"></div>
+
+<!-- Picker popup — body level so it's never clipped by hidden parents -->
+<div class="picker-popup" id="pickerPopup" style="position:fixed;z-index:500;">
+  <div class="picker-face-label" id="pickerLabel">Top face</div>
+  <div id="pickerContent"></div>
+</div>
+
+</body>
+</html>
